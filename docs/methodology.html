@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Methodology · Model Picks</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap">
+    <p class="brand"><a href="index.html">Model Picks</a></p>
+    <nav aria-label="Site">
+      <a href="index.html">Picks</a>
+      <a href="track-record.html">Track record</a>
+      <a href="methodology.html" aria-current="page">Methodology</a>
+    </nav>
+  </div>
+</header>
+<main class="wrap">
+<h1>Methodology</h1>
+<p>Two independent hobby models, one per sport. Both are gradient-boosted
+tree models (XGBoost) evaluated <strong>walk-forward only</strong>: every
+prediction is made using data available strictly before the game, and the
+models never see future data during evaluation. Published picks are logged
+before kickoff/tip-off and graded after the fact, unedited.</p>
+
+<section class="callout" aria-labelledby="honest-note">
+  <h2 id="honest-note">The honest betting finding</h2>
+  <p>Neither model beats the betting market. Against closing spreads both sit
+  near 50% against the spread, which after the bookmaker&#8217;s vig means a
+  <strong>negative return on investment</strong> &#8212; no betting edge.</p>
+    <ul>
+      <li>NFL backtest: 49.8% ATS, -4.1% ROI</li>
+      <li>NBA backtest: 50.6% ATS, -3.4% ROI</li>
+    </ul>
+  <p>That is the expected, honest result against closing lines, which are
+  extremely efficient. These models are for fun and for tracking calibrated
+  win probabilities, not for beating the market.</p>
+</section>
+
+<section class="sport-section" aria-labelledby="nfl-method">
+  <h2 id="nfl-method">NFL model</h2>
+  <p>A market-anchored XGBoost model built on
+  <a href="https://github.com/nflverse" rel="noopener">nflverse</a> data.
+  Features include exponentially weighted (EWMA) team form, an Elo rating,
+  and a closing-line prior that anchors the model to the market&#8217;s
+  opening information. The totals head additionally uses weather, and a
+  rolling starting-QB CPOE feature tracks quarterback play.</p>
+  <dl class="stat-grid">
+    <div class="stat"><dt>Straight-up accuracy</dt><dd>66.5%</dd></div>
+    <div class="stat"><dt>Brier score</dt><dd>0.212</dd></div>
+    <div class="stat"><dt>Margin MAE</dt><dd>10.1</dd></div>
+    <div class="stat"><dt>Games</dt><dd>1780</dd></div>
+    <div class="stat"><dt>Seasons</dt><dd>2018-2024</dd></div>
+  </dl>
+</section>
+
+<section class="sport-section" aria-labelledby="nba-method">
+  <h2 id="nba-method">NBA model</h2>
+  <p>A stats-only XGBoost model anchored on an Elo rating &#8212; no betting
+  market inputs at all. Features include exponentially weighted four-factors
+  (shooting, turnovers, rebounding, free throws) and rest/schedule effects.
+  Because it uses no market data, it publishes no spread comparison.</p>
+  <dl class="stat-grid">
+    <div class="stat"><dt>Straight-up accuracy</dt><dd>64.1%</dd></div>
+    <div class="stat"><dt>Brier score</dt><dd>0.225</dd></div>
+    <div class="stat"><dt>Margin MAE</dt><dd>9.4</dd></div>
+    <div class="stat"><dt>Games</dt><dd>3690</dd></div>
+    <div class="stat"><dt>Seasons</dt><dd>2019-2025</dd></div>
+  </dl>
+</section>
+
+<section class="sport-section" aria-labelledby="eval-method">
+  <h2 id="eval-method">Evaluation</h2>
+  <p>Backtests are strictly walk-forward: the model is retrained through
+  season <em>N</em> and scored on season <em>N&#8201;+&#8201;1</em>, then the
+  window rolls forward. Accuracy above is straight-up (picking the winner);
+  the Brier score measures probability calibration (lower is better); margin
+  MAE is the mean absolute error of the predicted point margin.</p>
+</section>
+</main>
+<footer class="site-footer">
+  <div class="wrap">
+    <p>These are the outputs of a hobby statistical model, published for fun and transparency. Not betting advice.</p>
+    <p class="updated">Updated 2026-08-17 09:00 UTC</p>
+  </div>
+</footer>
+</body>
+</html>
