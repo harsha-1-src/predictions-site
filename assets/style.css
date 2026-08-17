@@ -455,6 +455,51 @@ table.pl-table tbody th {
   color: var(--ink-muted);
 }
 
+/* Revision disclosures */
+
+td.matchup-cell {
+  white-space: normal;
+}
+
+.rev-details {
+  margin-top: 0.2rem;
+  font-size: 0.78rem;
+}
+
+.rev-details summary {
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+
+.rev-list {
+  margin: 0.35rem 0 0.2rem;
+  padding-left: 1.1rem;
+  color: var(--ink-secondary);
+}
+
+.rev-list li {
+  margin: 0.2rem 0;
+}
+
+.rev-when {
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.rev-kind {
+  font-weight: 600;
+}
+
+.rev-flag {
+  display: inline-block;
+  color: var(--bad);
+  font-weight: 600;
+}
+
+.rev-late {
+  opacity: 0.85;
+}
+
 /* Callout */
 
 .callout {

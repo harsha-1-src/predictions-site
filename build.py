@@ -56,6 +56,8 @@ NO_GRADED_NOTE = (
     "No graded picks yet &#8212; P/L starts when the first games are played."
 )
 
+POST_KICKOFF_NOTE = "logged after kickoff &#8212; not graded"
+
 EMDASH = "&#8212;"
 
 
@@ -557,6 +559,50 @@ moneylines at their logged American price.</figcaption>
 </figure>"""
 
 
+def render_revisions(game: dict) -> str:
+    """A no-JS <details> disclosure listing every logged revision of a pick.
+
+    Only rendered when a pick was actually edited (more than one revision) —
+    a single logged pick is just the pick. Revisions logged after kickoff are
+    flagged as not graded, because they are not honest predictions.
+    """
+    revisions = game.get("revisions") or []
+    if len(revisions) < 2:
+        return ""
+    items = []
+    for i, rev in enumerate(revisions):
+        kind = "Original" if i == 0 else f"Edit {i}"
+        bits = [f"<strong>{esc(rev.get('pick') or '?')}</strong>"]
+        prob = rev.get("pick_prob")
+        if prob is not None:
+            bits.append(fmt_pct(prob, 0))
+        margin = rev.get("pred_margin")
+        if margin is not None:
+            bits.append(f"margin {margin:+.1f}")
+        line = rev.get("spread_line")
+        if line is not None:
+            bits.append(f"line {line:+.1f}")
+        price = rev.get("ml_price")
+        if price is not None:
+            bits.append(f"ML {fmt_price(price)}")
+        late = bool(rev.get("post_kickoff"))
+        flag = f' <span class="rev-flag">{POST_KICKOFF_NOTE}</span>' if late else ""
+        cls = ' class="rev-late"' if late else ""
+        items.append(
+            f"<li{cls}><span class=\"rev-when\">{fmt_stamp(rev.get('logged_at'))}</span>"
+            f' <span class="rev-kind">{esc(kind)}</span> '
+            + " &#183; ".join(bits)
+            + f"{flag}</li>"
+        )
+    body = "\n      ".join(items)
+    return f"""<details class="rev-details">
+    <summary>{len(revisions)} revisions</summary>
+    <ol class="rev-list">
+      {body}
+    </ol>
+  </details>"""
+
+
 def render_record_summary(record: dict, sport: str, pnl=None) -> str:
     su_wins = record.get("su_wins", 0)
     su_losses = record.get("su_losses", 0)
@@ -623,10 +669,11 @@ def render_history_table(history: list, sport: str) -> str:
         if show_ats:
             ats_txt = ATS_LABEL.get(g.get("ats_result"), "&#8212;")
             ats_cell = f"<td>{ats_txt}</td>"
+        revisions = render_revisions(g)
         rows.append(
             "<tr>"
             f"<td>{fmt_date_short(g.get('date'))}</td>"
-            f"<td>{esc(matchup)}</td>"
+            f'<td class="matchup-cell">{esc(matchup)}{revisions}</td>'
             f"<td>{esc(g.get('pick') or '?')} ({fmt_pct(g.get('pick_prob'), 0)})</td>"
             f'<td class="{mark_cls}"><span aria-hidden="true">{mark}</span>'
             f'<span class="visually-hidden">{mark_label}</span></td>'
