@@ -8,6 +8,7 @@ directories are redirected into tmp_path.
 import shutil
 import subprocess
 import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -264,3 +265,66 @@ def test_rebuild_without_content_change_leaves_docs_untouched(tmp_path, monkeypa
     assert "0.999" in (docs / "data" / "nfl.json").read_text(encoding="utf-8") or \
         "99.9" in (docs / "index.html").read_text(encoding="utf-8")
     assert build  # imported for the build path under test
+
+
+def test_publisher_change_is_material_but_the_clock_alone_is_not(tmp_path):
+    """The footer stamp carries two things with opposite churn rules.
+
+    A later build time is noise — masking it is the whole reason the daily
+    re-run does not commit. A different publishing host is *news*: the site
+    moved boxes, and that must reach git.
+    """
+    import build
+
+    payloads = tmp_path / "payloads"
+    payloads.mkdir()
+    (payloads / "nfl.json").write_text(
+        (FIXTURES / "nfl_priced.json").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+
+    def staged(name, built_at, publisher):
+        out = tmp_path / name
+        build.build(payloads, out, built_at=built_at, publisher=publisher)
+        return out
+
+    t0 = datetime(2026, 8, 17, 20, 25, tzinfo=timezone.utc)
+    baseline = staged("a", t0, "vps3508171")
+
+    # Hours later on the same box: only the stamp moved.
+    later = staged("b", t0 + timedelta(hours=9, minutes=41), "vps3508171")
+    assert publish._materially_changed(later, baseline) is False
+
+    # Same instant, different box: a real change, and it reaches the page.
+    moved = staged("c", t0, "vps9900001")
+    assert publish._materially_changed(moved, baseline) is True
+    assert "from vps9900001" in (moved / "index.html").read_text(encoding="utf-8")
+
+    # Both at once still publishes — the host change is not masked away.
+    both = staged("d", t0 + timedelta(days=3), "vps9900001")
+    assert publish._materially_changed(both, baseline) is True
+
+
+def test_relabelling_the_box_publishes_through_the_real_build_path(
+        tmp_path, monkeypatch):
+    """End-to-end through publish.build_site(): SITE_PUBLISHER is read from
+    the build environment, so relabelling the box adopts a new docs/."""
+    payloads = tmp_path / "payloads"
+    payloads.mkdir()
+    (payloads / "nfl.json").write_text(
+        (FIXTURES / "nfl_priced.json").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    docs = tmp_path / "docs"
+    monkeypatch.setattr(publish, "PAYLOAD_DIR", payloads)
+    monkeypatch.setattr(publish, "OUT_DIR", docs)
+
+    monkeypatch.setenv("SITE_PUBLISHER", "vps-old")
+    assert publish.build_site() is True
+    assert "from vps-old" in (docs / "index.html").read_text(encoding="utf-8")
+
+    assert publish.build_site() is False, "same box, same content - no publish"
+
+    monkeypatch.setenv("SITE_PUBLISHER", "vps-new")
+    assert publish.build_site() is True, "a new publisher must reach docs/"
+    assert "from vps-new" in (docs / "index.html").read_text(encoding="utf-8")

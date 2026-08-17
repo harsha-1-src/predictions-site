@@ -11,13 +11,19 @@ Usage:
     python build.py                     # payloads/ -> docs/
     python build.py --now 2026-10-24    # pin the clock (previews and tests)
     build(payload_dir, out_dir, now)    # injectable paths, used by tests
+
+Every page footer carries a publisher stamp — who built the site and when —
+so a stale deployment is visible without logging into the box. See
+``resolve_publisher`` and ``publisher_line``.
 """
 from __future__ import annotations
 
 import argparse
 import html
 import json
+import os
 import shutil
+import socket
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -44,6 +50,14 @@ DISCLAIMER = (
     "These are the outputs of a hobby statistical model, published for fun "
     "and transparency. Not betting advice."
 )
+
+#: Environment variable that overrides the detected hostname in the footer's
+#: publisher stamp, so an operator can label a box ("vps-prod") rather than
+#: living with whatever the provider named it.
+PUBLISHER_ENV = "SITE_PUBLISHER"
+
+#: Shown instead of a hostname when the machine will not tell us its name.
+UNKNOWN_PUBLISHER = "unknown-host"
 
 HISTORY_ROW_CAP = 200
 
@@ -180,9 +194,50 @@ def load_payload(payload_dir: Path, sport: str):
         return None
 
 
+# ---------------------------------------------------------------- publisher
+
+def resolve_publisher(env=None) -> str:
+    """Which machine is publishing this build.
+
+    Defaults to the build host's own name, shortened to its first label so a
+    fully-qualified ``vps3508171.example.net`` reads as ``vps3508171``. The
+    ``SITE_PUBLISHER`` environment variable overrides it verbatim (no
+    shortening — an operator's chosen label is not a domain name to trim).
+
+    Resolved at build time, never read from a payload: the footer answers
+    "who published the bytes you are looking at", which is a property of the
+    build environment, not of the data.
+    """
+    env = os.environ if env is None else env
+    override = (env.get(PUBLISHER_ENV) or "").strip()
+    if override:
+        return override
+    try:
+        host = socket.gethostname()
+    except OSError:  # pragma: no cover - defensive; gethostname rarely fails
+        host = ""
+    return (host or "").strip().split(".")[0].strip() or UNKNOWN_PUBLISHER
+
+
+def publisher_line(built_at: datetime, publisher: str) -> str:
+    """The footer's freshness stamp, e.g.::
+
+        Last updated 2026-08-17 20:25 UTC from vps3508171
+
+    ``built_at`` is the *build* clock, deliberately not the payloads'
+    ``generated_at``: the site is only ever as fresh as its last successful
+    publish, and a payload can be much older than the run that shipped it.
+    """
+    stamp = built_at.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M")
+    return f"Last updated {stamp} UTC from {publisher}"
+
+
 # --------------------------------------------------------------- page shell
 
 def page_shell(title: str, active: str, body: str, updated: str | None) -> str:
+    """Wrap ``body`` in the shared chrome. ``updated`` is the publisher stamp
+    from :func:`publisher_line`; it is rendered verbatim (escaped) below the
+    disclaimer."""
     nav_items = (
         ("index.html", "Picks", "picks"),
         ("track-record.html", "Track record", "track"),
@@ -193,9 +248,7 @@ def page_shell(title: str, active: str, body: str, updated: str | None) -> str:
         current = ' aria-current="page"' if key == active else ""
         links.append(f'<a href="{href}"{current}>{label}</a>')
     nav = "\n      ".join(links)
-    updated_html = (
-        f'<p class="updated">Updated {esc(updated)}</p>' if updated else ""
-    )
+    updated_html = f'<p class="updated">{esc(updated)}</p>' if updated else ""
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -939,28 +992,33 @@ before kickoff/tip-off and graded after the fact, unedited.</p>
 
 # -------------------------------------------------------------------- build
 
-def build(payload_dir=None, out_dir=None, now=None) -> Path:
+def build(payload_dir=None, out_dir=None, now=None, built_at=None,
+          publisher=None) -> Path:
     """Render payloads into ``out_dir``.
 
     ``now`` pins the clock used for the Pacific dashboard windows; it defaults
     to the real UTC clock and exists so tests (and previews) are deterministic.
     It accepts the same ISO-8601 string the ``--now`` CLI flag takes, as well
     as a datetime.
+
+    ``built_at`` and ``publisher`` feed the footer's publisher stamp and both
+    default to the live build environment (the UTC wall clock and this host's
+    name). They are separate from ``now`` on purpose: ``now`` is a *content*
+    knob, while these two describe the publish itself.
     """
     now = units.coerce_now(now) if now is not None else None
     payload_dir = Path(payload_dir) if payload_dir else ROOT / "payloads"
     out_dir = Path(out_dir) if out_dir else ROOT / "docs"
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    if built_at is None:
+        built_at = datetime.now(timezone.utc)
+    if publisher is None:
+        publisher = resolve_publisher()
+
     payloads = {sport: load_payload(payload_dir, sport) for sport, _ in SPORTS}
 
-    stamps = [
-        parse_iso(p.get("generated_at"))
-        for p in payloads.values()
-        if p and p.get("generated_at")
-    ]
-    stamps = [s for s in stamps if s is not None]
-    updated = fmt_stamp(max(stamps).isoformat()) if stamps else None
+    updated = publisher_line(built_at, publisher)
 
     pages = {
         "index.html": page_shell(

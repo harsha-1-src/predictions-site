@@ -38,6 +38,57 @@ that sport renders in an empty state) and writes the site into `docs/`.
 `--now` only affects which games fall into the Today / This week / This month
 dashboard rows; it exists so previews and tests are deterministic.
 
+## The footer publisher stamp (headless monitoring)
+
+Every page footer carries the disclaimer and one freshness line:
+
+```
+Last updated 2026-08-17 20:25 UTC from vps3508171
+```
+
+This is the site's own health check. Once the VPS runs the daily cycle
+unattended, nobody logs into the box to see whether it is still alive — but
+anyone can load the page and read the last successful publish off the footer.
+A timestamp that stopped moving means the scheduler stopped running; a
+hostname you did not expect means the site is being published from somewhere
+you did not intend.
+
+Two deliberate choices:
+
+* **The timestamp is the *build* clock, not the payloads' `generated_at`.**
+  The site is only ever as fresh as its last successful publish. A payload can
+  be days older than the run that shipped it (an export failed and the
+  previous payload was reused, say) — reporting the payload's age would hide
+  exactly the failure the stamp exists to surface.
+* **The publisher comes from the build environment, not from any file.**
+  `build.resolve_publisher()` uses `socket.gethostname()`, shortened to its
+  first label so `vps3508171.hosting.example.net` reads as `vps3508171`. Set
+  `SITE_PUBLISHER` to override it verbatim when the provider's hostname is
+  meaningless and you would rather label the box:
+
+  ```
+  SITE_PUBLISHER=vps-prod python daily.py
+  ```
+
+  A blank or whitespace-only value is ignored, and a host that will not name
+  itself publishes as `unknown-host` rather than an empty footer.
+
+### How this interacts with no-op publishing
+
+`publish.py` refuses to commit a rebuild whose only diff is the run's own
+timestamps (see [The daily cycle](#the-daily-cycle)), and the stamp is built
+to respect that split:
+
+| What changed | Committed? | Why |
+| --- | --- | --- |
+| The build clock only | no | `_VOLATILE_TS` masks it — otherwise the site churns a commit a day |
+| The publishing host | **yes** | a hostname is not a timestamp; moving boxes is real news |
+| Both | **yes** | the host change survives the masking |
+
+`tests/test_daily.py` pins all three rows, so a future change to the footer's
+wording cannot quietly reintroduce daily commit churn or, worse, silently
+swallow a host change.
+
 ## Units and P/L conventions
 
 The home page carries a Today / This week / This month × NFL / NBA / Combined
@@ -224,6 +275,8 @@ the crontab instead):
 
 ```cron
 CRON_TZ=America/Los_Angeles
+# Optional: label this box in the footer stamp instead of using its hostname.
+SITE_PUBLISHER=vps-prod
 # nightly full cycle at 03:00 PT
 0 3 * * * cd /path/to/predictions-site && ../nfl-model/.venv/bin/python daily.py >> logs/automation.log 2>&1
 # intraday revision checks, hourly 06:00-20:00 PT (each model's sync
@@ -283,12 +336,12 @@ no venv of its own; the sibling NFL repo's venv is convenient:
 
 | File | Covers |
 | --- | --- |
-| `tests/test_build.py` | page rendering, empty states, site-wide invariants |
+| `tests/test_build.py` | page rendering, empty states, site-wide invariants, the footer publisher stamp |
 | `tests/test_units.py` | settlement arithmetic, Pacific window boundaries |
 | `tests/test_dashboard.py` | the P/L dashboard, units chart, `docs/data`, v1 payloads |
 | `tests/test_ats_pricing.py` | priced spreads, partial odds coverage, the odds methodology |
 | `tests/test_revisions.py` | the revision disclosures |
-| `tests/test_daily.py` | the daily cycle, dry runs, the run log |
+| `tests/test_daily.py` | the daily cycle, dry runs, the run log, publish idempotency |
 
 Fixture payloads: `nfl.json` / `nba.json` are v1 (no `settle`), `empty.json` is
 the pre-season state, `nfl_priced.json` is a full v2 NFL slate, and there are

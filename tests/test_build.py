@@ -1,7 +1,9 @@
 """Tests for build.py. Stdlib-only code under test; pytest as the runner."""
+import json
 import re
 import shutil
 import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -9,6 +11,7 @@ import pytest
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
+import build as build_mod  # noqa: E402
 from build import build  # noqa: E402
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -141,3 +144,93 @@ def test_missing_payload_renders_empty_state(empty_site):
     assert 'id="nba-picks"' in index
     track = read(empty_site, "track-record.html")
     assert "No results published yet" in track
+
+
+# (g) the publisher stamp: who published, and when
+
+STAMP_RE = re.compile(
+    r"Last updated \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC from (\S+)"
+)
+
+
+@pytest.mark.parametrize("page", PAGES)
+def test_publisher_stamp_on_every_page(full_site, empty_site, page):
+    """A page with no data at all still says who published it and when —
+    that is precisely the case an operator needs to spot."""
+    for site in (full_site, empty_site):
+        match = STAMP_RE.search(read(site, page))
+        assert match, f"no publisher stamp in {page}"
+        assert match.group(1) not in ("", "None")
+
+
+def test_publisher_stamp_uses_build_time_not_payload_generated_at(tmp_path):
+    """The payloads are from 2026; the stamp must show the build clock."""
+    payload_dir = tmp_path / "payloads"
+    payload_dir.mkdir()
+    shutil.copyfile(FIXTURES / "nfl.json", payload_dir / "nfl.json")
+    out = tmp_path / "docs"
+    build(
+        payload_dir,
+        out,
+        built_at=datetime(2031, 3, 4, 5, 6, tzinfo=timezone.utc),
+        publisher="vps3508171",
+    )
+    index = (out / "index.html").read_text(encoding="utf-8")
+    assert "Last updated 2031-03-04 05:06 UTC from vps3508171" in index
+    # ...and the payload's own generated_at is not what the footer shows.
+    generated = json.loads(
+        (FIXTURES / "nfl.json").read_text(encoding="utf-8")
+    )["generated_at"]
+    assert f"Last updated {generated[:10]}" not in index
+
+
+def test_build_time_is_rendered_in_utc(tmp_path):
+    """A non-UTC build clock is converted, never printed as local time."""
+    payload_dir = tmp_path / "payloads"
+    payload_dir.mkdir()
+    out = tmp_path / "docs"
+    minus_seven = timezone(timedelta(hours=-7))
+    build(
+        payload_dir,
+        out,
+        built_at=datetime(2026, 8, 17, 13, 25, tzinfo=minus_seven),
+        publisher="box",
+    )
+    assert "Last updated 2026-08-17 20:25 UTC from box" in (
+        out / "index.html").read_text(encoding="utf-8")
+
+
+def test_publisher_defaults_to_the_short_hostname(monkeypatch):
+    monkeypatch.delenv(build_mod.PUBLISHER_ENV, raising=False)
+    monkeypatch.setattr(
+        build_mod.socket, "gethostname", lambda: "vps3508171.hosting.example.net"
+    )
+    assert build_mod.resolve_publisher() == "vps3508171"
+
+
+def test_publisher_env_var_overrides_the_hostname(monkeypatch):
+    monkeypatch.setattr(build_mod.socket, "gethostname", lambda: "ignored")
+    monkeypatch.setenv(build_mod.PUBLISHER_ENV, "  vps-prod  ")
+    assert build_mod.resolve_publisher() == "vps-prod"
+
+
+def test_blank_env_override_falls_back_to_the_hostname(monkeypatch):
+    monkeypatch.setattr(build_mod.socket, "gethostname", lambda: "realbox.local")
+    monkeypatch.setenv(build_mod.PUBLISHER_ENV, "   ")
+    assert build_mod.resolve_publisher() == "realbox"
+
+
+def test_unnameable_host_still_produces_a_stamp(monkeypatch):
+    monkeypatch.delenv(build_mod.PUBLISHER_ENV, raising=False)
+    monkeypatch.setattr(build_mod.socket, "gethostname", lambda: "")
+    assert build_mod.resolve_publisher() == build_mod.UNKNOWN_PUBLISHER
+
+
+def test_publisher_is_html_escaped(tmp_path):
+    payload_dir = tmp_path / "payloads"
+    payload_dir.mkdir()
+    out = tmp_path / "docs"
+    build(payload_dir, out, publisher='a"<b>')
+    index = (out / "index.html").read_text(encoding="utf-8")
+    assert "<b>" not in index.split("<footer")[1]
+    assert "&lt;b&gt;" in index
