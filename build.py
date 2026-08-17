@@ -56,6 +56,17 @@ NO_GRADED_NOTE = (
     "No graded picks yet &#8212; P/L starts when the first games are played."
 )
 
+#: Odds coverage is per game, so a league can have real units that cover only
+#: part of its slate. Say so rather than implying the units cover everything.
+PARTIAL_ODDS_NOTE = (
+    "{ungraded} of {graded} graded games had no odds logged and are "
+    "ungraded for units"
+)
+
+UNGRADED_UNITS_TITLE = "no odds logged &#8212; ungraded for units"
+
+UNGRADED_UNITS_LABEL = "ungraded for units, no odds logged"
+
 POST_KICKOFF_NOTE = "logged after kickoff &#8212; not graded"
 
 EMDASH = "&#8212;"
@@ -249,12 +260,33 @@ def _record_cell(record) -> str:
     )
 
 
+def _coverage_note(label: str, cov: dict) -> str:
+    """The note under the dashboard for one league's odds coverage, or "".
+
+    Three honest states, decided by the data and never by the league's name:
+    nothing priced at all (record only), partly priced (real units plus how
+    much of the slate they miss), and fully priced (no note needed).
+    """
+    if not cov["graded"]:
+        return ""
+    if not cov["priced"]:
+        return f'<p class="pl-note">{esc(label)}: {NO_ODDS_NOTE}.</p>'
+    if cov["ungraded"]:
+        return (
+            f'<p class="pl-note">{esc(label)}: '
+            + PARTIAL_ODDS_NOTE.format(**cov)
+            + ".</p>"
+        )
+    return ""
+
+
 def render_dashboard(payloads: dict, now=None) -> str:
     """Compact Today / This week / This month by league P/L table.
 
-    Leagues with no priced market anywhere (NBA without an odds source) fall
-    back to a straight-up record and say so; a site with nothing graded at all
-    still renders the shell so the page never loses its shape.
+    A league with no priced market anywhere falls back to a straight-up record
+    and says so; a partly priced league shows the units it genuinely has plus
+    a note naming how many games those units miss; a site with nothing graded
+    at all still renders the shell so the page never loses its shape.
     """
     histories = {
         sport: ((payloads.get(sport) or {}).get("history") or [])
@@ -297,10 +329,9 @@ def render_dashboard(payloads: dict, now=None) -> str:
         notes.append(f'<p class="pl-note">{NO_GRADED_NOTE}</p>')
     else:
         for sport, label in SPORTS:
-            if not priced[sport] and units.graded_count(histories[sport]):
-                notes.append(
-                    f'<p class="pl-note">{esc(label)}: {NO_ODDS_NOTE}.</p>'
-                )
+            note = _coverage_note(label, units.coverage(histories[sport], "all"))
+            if note:
+                notes.append(note)
     notes_html = "\n  ".join(notes)
 
     return f"""<section class="dashboard" aria-labelledby="pl-heading">
@@ -554,8 +585,9 @@ def units_chart_svg(series: dict, label: str) -> str:
   {lines_html}
 </svg>{legend}
 <figcaption>Cumulative units at one flat unit a pick. The dashed line marks
-break-even; ATS prices at the logged spread price (-110 by default),
-moneylines at their logged American price.</figcaption>
+break-even. Both markets settle at the price logged with the pick; a spread
+published without a price settles at the -110 convention. Games with no odds
+on record are ungraded for units and plot nothing.</figcaption>
 </figure>"""
 
 
@@ -603,6 +635,30 @@ def render_revisions(game: dict) -> str:
   </details>"""
 
 
+def ats_breakdown(record: dict, pnl=None):
+    """The ATS W-L-P row for the summary grid, or ``None``.
+
+    Prefers the payload's own ``record.ats`` and falls back to the settled ATS
+    bets in ``pnl``. The fallback is what gives a league the same breakdown NFL
+    has the moment its payload starts carrying spreads, even if the model repo
+    has not caught up and still reports ``record.ats: null`` -- presence of the
+    data decides, not the league.
+    """
+    ats = (record or {}).get("ats")
+    if ats:
+        return ats
+    block = (pnl or {}).get("ats")
+    if not block:
+        return None
+    decided = block["w"] + block["l"]
+    return {
+        "w": block["w"],
+        "l": block["l"],
+        "p": block["p"],
+        "pct": (block["w"] / decided) if decided else None,
+    }
+
+
 def render_record_summary(record: dict, sport: str, pnl=None) -> str:
     su_wins = record.get("su_wins", 0)
     su_losses = record.get("su_losses", 0)
@@ -615,7 +671,7 @@ def render_record_summary(record: dict, sport: str, pnl=None) -> str:
         ),
         ("Brier score", fmt_num(record.get("brier"))),
     ]
-    ats = record.get("ats")
+    ats = ats_breakdown(record, pnl)
     if ats:
         stats.append(
             (
@@ -644,14 +700,43 @@ def render_record_summary(record: dict, sport: str, pnl=None) -> str:
     return f'<dl class="stat-grid">\n    {cells}\n  </dl>'
 
 
+def _row_units_cell(game: dict) -> str:
+    """The per-game units cell, or an explicit ungraded-for-units marker.
+
+    A game with no odds on record is never allowed to look like a settled 0.00u
+    or a loss: it gets an em dash carrying both a ``title`` and a screen-reader
+    label saying why.
+    """
+    u = units.entry_units(game)
+    if u is None:
+        return (
+            f'<td class="pl-cell units-na" title="{UNGRADED_UNITS_TITLE}">'
+            f'<span aria-hidden="true">{EMDASH}</span>'
+            f'<span class="visually-hidden">{UNGRADED_UNITS_LABEL}</span></td>'
+        )
+    return (
+        f'<td class="pl-cell"><span class="pl-units {units_class(u)}">'
+        f"{fmt_units(u)}</span></td>"
+    )
+
+
 def render_history_table(history: list, sport: str) -> str:
+    """The graded-games table.
+
+    Which columns appear is decided by what the payload contains, never by the
+    sport: an ATS column whenever any graded game carries an ``ats_result``,
+    and a units column whenever any graded game settled at least one priced
+    market.
+    """
     graded = [g for g in history if g.get("su_correct") is not None]
     graded.sort(key=lambda g: (g.get("date") or "", g.get("game_id") or ""), reverse=True)
     graded = graded[:HISTORY_ROW_CAP]
     if not graded:
         return ""
     show_ats = any(g.get("ats_result") for g in graded)
+    show_units = any(units.is_priced(g) for g in graded)
     ats_head = "<th scope=\"col\">ATS</th>" if show_ats else ""
+    units_head = '<th scope="col">Units</th>' if show_units else ""
     rows = []
     for g in graded:
         matchup = f"{g.get('away', '?')} @ {g.get('home', '?')}"
@@ -669,6 +754,7 @@ def render_history_table(history: list, sport: str) -> str:
         if show_ats:
             ats_txt = ATS_LABEL.get(g.get("ats_result"), "&#8212;")
             ats_cell = f"<td>{ats_txt}</td>"
+        units_cell = _row_units_cell(g) if show_units else ""
         revisions = render_revisions(g)
         rows.append(
             "<tr>"
@@ -679,13 +765,14 @@ def render_history_table(history: list, sport: str) -> str:
             f'<span class="visually-hidden">{mark_label}</span></td>'
             f"<td>{score}</td>"
             f"{ats_cell}"
+            f"{units_cell}"
             "</tr>"
         )
     body = "\n      ".join(rows)
     return f"""<div class="table-scroll">
   <table class="history">
     <thead>
-      <tr><th scope="col">Date</th><th scope="col">Matchup</th><th scope="col">Pick</th><th scope="col">Result</th><th scope="col">Score</th>{ats_head}</tr>
+      <tr><th scope="col">Date</th><th scope="col">Matchup</th><th scope="col">Pick</th><th scope="col">Result</th><th scope="col">Score</th>{ats_head}{units_head}</tr>
     </thead>
     <tbody>
       {body}
@@ -724,10 +811,9 @@ def render_track_record(payloads: dict) -> str:
                 )
                 if units_chart:
                     parts.append(units_chart)
-                elif units.graded_count(history):
-                    parts.append(
-                        f'<p class="pl-note">{esc(label)}: {NO_ODDS_NOTE}.</p>'
-                    )
+                note = _coverage_note(label, units.coverage(history, "all"))
+                if note:
+                    parts.append(note)
                 table = render_history_table(history, sport)
                 if table:
                     parts.append(table)
@@ -810,8 +896,35 @@ before kickoff/tip-off and graded after the fact, unedited.</p>
   <p>A stats-only XGBoost model anchored on an Elo rating &#8212; no betting
   market inputs at all. Features include exponentially weighted four-factors
   (shooting, turnovers, rebounding, free throws) and rest/schedule effects.
-  Because it uses no market data, it publishes no spread comparison.</p>
+  Because it uses no market data, its picks are made without ever seeing a
+  line &#8212; the odds below are attached afterwards, purely to settle the
+  published units.</p>
   {render_backtest_stats(payloads.get("nba"))}
+</section>
+
+<section class="sport-section" aria-labelledby="odds-method">
+  <h2 id="odds-method">Where the odds come from</h2>
+  <p><strong>NFL spreads</strong> come from
+  <a href="https://github.com/nflverse" rel="noopener">nflverse</a> historical
+  closing lines. Those are a <em>line only</em> &#8212; nflverse does not
+  publish the price that went with it &#8212; so NFL against-the-spread results
+  are settled at the standard <strong>-110</strong> convention. That figure is
+  a stated assumption, not a recorded price, and it is the only place on this
+  site where a price is assumed at all.</p>
+  <p><strong>NBA moneylines and spreads</strong> come from live odds APIs read
+  at prediction time: <strong>ParlayAPI</strong> first, with
+  <strong>The Odds API</strong> as the fallback (both on their free tiers).
+  Those carry a real price, so NBA bets settle at the <strong>exact price
+  logged with the pick</strong> &#8212; often -110 on a spread, but never
+  assumed to be.</p>
+  <p>Every price is recorded alongside the pick <em>before</em> the game and is
+  never back-filled or invented afterwards. Coverage is <strong>per
+  game</strong>, not per league: some games get a spread and a moneyline, some
+  only one of the two, some neither. A game played with no odds on record is
+  shown as <strong>ungraded for units</strong> &#8212; an em dash in the units
+  column, and counted in the note under the P/L table &#8212; rather than being
+  assumed into a price it never had. Days with no odds at all simply contribute
+  no units.</p>
 </section>
 
 <section class="sport-section" aria-labelledby="eval-method">

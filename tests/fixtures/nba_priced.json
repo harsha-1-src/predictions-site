@@ -1,0 +1,190 @@
+{
+  "sport": "nba",
+  "generated_at": "2026-10-24T08:30:00+00:00",
+  "upcoming": [
+    {
+      "game_id": "2026_BOS_NYK_1025",
+      "date": "2026-10-25",
+      "datetime_utc": "2026-10-25T23:30:00+00:00",
+      "away": "BOS",
+      "home": "NYK",
+      "home_win_prob": 0.44,
+      "pick": "BOS",
+      "pick_prob": 0.56,
+      "tier": "Lean",
+      "pred_home_score": 110.3,
+      "pred_away_score": 114.8,
+      "pred_margin": -4.5,
+      "pred_total": 225.1,
+      "model_line": "BOS -4.5",
+      "market_line": "BOS -2.5",
+      "market_total": 224.5,
+      "ml_price": -125,
+      "logged_at": "2026-10-24T12:00:00+00:00",
+      "revisions": [
+        {
+          "logged_at": "2026-10-24T12:00:00+00:00",
+          "pick": "BOS",
+          "pick_prob": 0.56,
+          "pred_margin": -4.5,
+          "spread_line": -2.5,
+          "ml_price": -125,
+          "post_kickoff": false
+        }
+      ]
+    },
+    {
+      "game_id": "2026_SAC_POR_1025",
+      "date": "2026-10-25",
+      "datetime_utc": "2026-10-25T02:00:00+00:00",
+      "away": "SAC",
+      "home": "POR",
+      "home_win_prob": 0.51,
+      "pick": "POR",
+      "pick_prob": 0.51,
+      "tier": "Toss-up",
+      "pred_home_score": 112.0,
+      "pred_away_score": 111.4,
+      "pred_margin": 0.6,
+      "pred_total": 223.4,
+      "model_line": null,
+      "market_line": null,
+      "market_total": null,
+      "ml_price": null,
+      "logged_at": "2026-10-24T12:00:00+00:00",
+      "revisions": []
+    }
+  ],
+  "history": [
+    {
+      "game_id": "2026_BOS_NYK_1005",
+      "date": "2026-10-05",
+      "away": "BOS",
+      "home": "NYK",
+      "pick": "BOS",
+      "pick_prob": 0.61,
+      "tier": "Strong",
+      "su_correct": true,
+      "home_score": 106.0,
+      "away_score": 112.0,
+      "pred_home_score": 107.1,
+      "pred_away_score": 114.0,
+      "ats_result": "push",
+      "settle": {
+        "spread_line": -6.0,
+        "spread_price": -110,
+        "ml_price": -190,
+        "ml_result": "win"
+      },
+      "revisions": []
+    },
+    {
+      "game_id": "2026_MIL_CHI_1020",
+      "date": "2026-10-20",
+      "away": "MIL",
+      "home": "CHI",
+      "pick": "MIL",
+      "pick_prob": 0.67,
+      "tier": "Strong",
+      "su_correct": true,
+      "home_score": 104.0,
+      "away_score": 119.0,
+      "pred_home_score": 108.9,
+      "pred_away_score": 117.3,
+      "ats_result": null,
+      "settle": {
+        "spread_line": null,
+        "spread_price": null,
+        "ml_price": null,
+        "ml_result": null
+      },
+      "revisions": []
+    },
+    {
+      "game_id": "2026_GSW_PHX_1022",
+      "date": "2026-10-22",
+      "away": "GSW",
+      "home": "PHX",
+      "pick": "GSW",
+      "pick_prob": 0.53,
+      "tier": "Toss-up",
+      "su_correct": false,
+      "home_score": 121.0,
+      "away_score": 116.0,
+      "pred_home_score": 113.8,
+      "pred_away_score": 115.0,
+      "ats_result": "loss",
+      "settle": {
+        "spread_line": 2.5,
+        "spread_price": 100,
+        "ml_price": null,
+        "ml_result": null
+      },
+      "revisions": [
+        {
+          "logged_at": "2026-10-21T15:00:00+00:00",
+          "pick": "GSW",
+          "pick_prob": 0.51,
+          "pred_margin": -0.4,
+          "spread_line": 3.0,
+          "ml_price": null,
+          "post_kickoff": false
+        },
+        {
+          "logged_at": "2026-10-22T15:10:00+00:00",
+          "pick": "GSW",
+          "pick_prob": 0.53,
+          "pred_margin": -1.2,
+          "spread_line": 2.5,
+          "ml_price": null,
+          "post_kickoff": false
+        }
+      ]
+    },
+    {
+      "game_id": "2026_LAL_DEN_1024",
+      "date": "2026-10-24",
+      "away": "LAL",
+      "home": "DEN",
+      "pick": "DEN",
+      "pick_prob": 0.63,
+      "tier": "Strong",
+      "su_correct": true,
+      "home_score": 118.0,
+      "away_score": 109.0,
+      "pred_home_score": 115.2,
+      "pred_away_score": 110.6,
+      "ats_result": "win",
+      "settle": {
+        "spread_line": -4.5,
+        "spread_price": -105,
+        "ml_price": -140,
+        "ml_result": "win"
+      },
+      "revisions": []
+    }
+  ],
+  "record": {
+    "graded": 4,
+    "pending": 2,
+    "su_wins": 3,
+    "su_losses": 1,
+    "su_acc": 0.75,
+    "brier": 0.211,
+    "ats": null,
+    "running": [
+      {"date": "2026-10-05", "graded": 1, "su_acc": 1.0},
+      {"date": "2026-10-20", "graded": 2, "su_acc": 1.0},
+      {"date": "2026-10-22", "graded": 3, "su_acc": 0.6667},
+      {"date": "2026-10-24", "graded": 4, "su_acc": 0.75}
+    ]
+  },
+  "backtest": {
+    "su_acc": 0.641,
+    "brier": 0.225,
+    "margin_mae": 9.4,
+    "n_games": 3690,
+    "seasons": "2019-2025",
+    "ats": "50.6% ATS, -3.4% ROI"
+  }
+}
