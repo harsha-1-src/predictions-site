@@ -26,6 +26,29 @@ Conventions
   This applies to ATS exactly as it does to the moneyline.
 * Pushes are counted in their own bucket. They are never folded into wins.
 
+The prediction-horizon policy, and a deliberate asymmetry
+---------------------------------------------------------
+The model repos only publish live predictions for games starting inside a
+horizon window (currently 3-7 days out). A handful of historic rows were
+predicted long before that policy existed; the prediction log is append-only,
+so they are kept and flagged ``out_of_policy: true`` rather than deleted.
+
+Those entries are excluded from **every units and P/L computation** here --
+ATS, moneyline, per-game units, coverage, the cumulative series and every
+window. The exclusion works exactly like an unbetable game: they are not a
+loss and not a 0.0, they simply were never a bet on this site's terms.
+
+They stay **included** in ``su_record`` and in the straight-up accuracy the
+payload reports. That asymmetry is intentional and it is the honest direction:
+they were real graded predictions, and dropping them from the accuracy record
+would flatter it, while keeping them in the P/L would credit or debit units
+for picks the current policy would never have published. The site is required
+to say so wherever the two scopes differ -- see ``out_of_policy_count``, which
+exists purely so the UI can count what it is leaving out.
+
+A missing ``out_of_policy`` key means ``False``: payloads written before the
+policy existed are fully in scope for P/L.
+
 Nothing here knows or cares which league an entry came from: whether a league
 has ATS, a moneyline, both or neither is decided purely by the fields present
 in its payload.
@@ -53,8 +76,10 @@ __all__ = [
     "entry_units",
     "filter_window",
     "graded_count",
+    "is_out_of_policy",
     "is_priced",
     "ml_pnl",
+    "out_of_policy_count",
     "pacific_tz",
     "su_record",
     "summarize",
@@ -232,6 +257,18 @@ def filter_window(entries, window: str = "all", now=None) -> list:
 
 # ----------------------------------------------------------------- settlement
 
+def is_out_of_policy(entry) -> bool:
+    """True when this prediction was made outside the horizon policy.
+
+    Reads the payload's ``out_of_policy`` flag; a missing key is ``False``, so
+    payloads written before the policy existed stay fully inside P/L scope.
+    The model repos own the decision -- this module never re-derives it from
+    ``horizon_days``, because only the repo that made the pick knows how far
+    out the game was *at the time it was predicted*.
+    """
+    return bool((entry or {}).get("out_of_policy"))
+
+
 def american_profit(price) -> float:
     """Profit on a winning 1u stake at an American price.
 
@@ -260,7 +297,13 @@ def ats_pnl(entry):
     (or null) the price falls back to ``ATS_DEFAULT_PRICE`` (-110), which is
     the documented convention for price-less historical lines such as
     nflverse's closing spreads. No league is special-cased here.
+
+    An ``out_of_policy`` entry is also ``None``: a pick the horizon policy
+    would never have published is not a bet, in the same sense that a game
+    with no spread is not a bet.
     """
+    if is_out_of_policy(entry):
+        return None
     settle = (entry or {}).get("settle") or {}
     if settle.get("spread_line") is None:
         return None
@@ -280,9 +323,12 @@ def ats_pnl(entry):
 def ml_pnl(entry):
     """``(result, profit)`` for the moneyline side of a game, or ``None``.
 
-    ``None`` means "not a bet": no logged price (no odds source configured) or
-    no settled ``ml_result`` yet.
+    ``None`` means "not a bet": no logged price (no odds source configured),
+    no settled ``ml_result`` yet, or an ``out_of_policy`` entry (see
+    :func:`is_out_of_policy`).
     """
+    if is_out_of_policy(entry):
+        return None
     settle = (entry or {}).get("settle") or {}
     price = settle.get("ml_price")
     if price is None or price == 0:
@@ -301,9 +347,11 @@ def entry_units(entry):
     """Units this single game contributed across every market, or ``None``.
 
     Sums whichever of ATS and moneyline actually settled. ``None`` -- never
-    ``0.0`` -- means the game is **ungraded for units**: it may well have been
-    played and scored straight-up, but no odds were logged for either market,
-    so there is no honest unit figure to show for it.
+    ``0.0`` -- means the game contributed no units: either it is **ungraded
+    for units** (played and scored straight-up, but no odds were logged for
+    either market) or it is **out of policy**. Callers that need to tell those
+    two apart -- the UI does, because they deserve different explanations --
+    ask :func:`is_out_of_policy` as well.
     """
     scored = [s for s in (ats_pnl(entry), ml_pnl(entry)) if s]
     if not scored:
@@ -327,10 +375,16 @@ def coverage(entries, window: str = "all", now=None) -> dict:
     slate and miss the rest. Surfacing the split lets the site show the units
     it genuinely has *and* say how much of the slate they cover, instead of
     choosing between hiding real numbers and implying complete ones.
+
+    Scope note: these three counts describe the games that are **eligible for
+    P/L**, so out-of-policy games are left out of all of them -- they are
+    missing from the units for a different reason, and folding them into
+    ``ungraded`` would blame the odds provider for a policy decision. They are
+    counted separately by :func:`out_of_policy_count`.
     """
     scoped = [
         e for e in filter_window(entries, window, now)
-        if (e or {}).get("su_correct") is not None
+        if (e or {}).get("su_correct") is not None and not is_out_of_policy(e)
     ]
     priced = sum(1 for e in scoped if is_priced(e))
     return {
@@ -338,6 +392,20 @@ def coverage(entries, window: str = "all", now=None) -> dict:
         "priced": priced,
         "ungraded": len(scoped) - priced,
     }
+
+
+def out_of_policy_count(entries, window: str = "all", now=None) -> int:
+    """How many graded entries in ``window`` were predicted outside policy.
+
+    These are the games that appear in the straight-up record but in no units
+    figure anywhere on the site. The count exists so the UI can name the gap
+    instead of leaving a reader to wonder why the two scopes disagree.
+    """
+    return sum(
+        1
+        for e in filter_window(entries, window, now)
+        if (e or {}).get("su_correct") is not None and is_out_of_policy(e)
+    )
 
 
 def _block(settled):
@@ -397,7 +465,13 @@ def graded_count(entries) -> int:
 
 
 def su_record(entries, window: str = "all", now=None) -> dict:
-    """Straight-up ``{"w", "l", "n"}`` -- the fallback when nothing is priced."""
+    """Straight-up ``{"w", "l", "n"}`` -- the fallback when nothing is priced.
+
+    Deliberately **inclusive of out-of-policy games**, unlike every units
+    function in this module. They were graded predictions and they count
+    against the accuracy record; see the module docstring for why the two
+    scopes differ and why the difference is stated on the site.
+    """
     scoped = filter_window(entries, window, now)
     w = sum(1 for e in scoped if (e or {}).get("su_correct") is True)
     lost = sum(1 for e in scoped if (e or {}).get("su_correct") is False)
