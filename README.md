@@ -45,25 +45,62 @@ profit-and-loss dashboard, and the track record carries a cumulative-units
 chart. All of it comes from `units.py`, which follows one set of rules:
 
 * **One flat unit per pick.** No staking plan, no Kelly, no parlays.
-* **ATS settles at -110** unless the payload logs a different
-  `settle.spread_price`. A win pays +100/110 = **+0.9091u**, a loss **-1.0u**,
-  a push **0.0u**.
+* **ATS settles at the logged `settle.spread_price`.** A real spread price is
+  *not* guaranteed to be -110: it is commonly -110, but -105, -120 and +100 all
+  turn up. A win pays `american_profit(price)`, a loss **-1.0u**, a push
+  **0.0u**.
+* **-110 is a fallback, not the rule.** When a payload logs a spread *line*
+  with no price, ATS settles at `units.ATS_DEFAULT_PRICE` (-110, so
+  +100/110 = **+0.9091u** on a win). That is the NFL case and only the NFL
+  case: nflverse publishes historical closing lines without the juice that
+  went with them, so the price has to be assumed. It is the one assumed price
+  anywhere on the site, and the Methodology page says so.
 * **Moneylines settle at the logged price** (`settle.ml_price`, American
   odds): a negative price pays 100/|price|, a positive price pays price/100.
   The price is the one that was logged with the pick, not a later one.
 * **Pushes are counted separately** (the record is W-L-P) and are never
   reported as wins. They stay in the ROI denominator, because a push still
   used a slot on the card.
-* **Unpriced games are not bets.** An `ats_result` of `no-line` / `no-pick` /
-  null, or a null `ml_price`, is excluded from the counts entirely rather than
-  scored as 0.0 — otherwise an ungraded slate would read as a break-even one.
-* **A market with no settled bets reports `null`, never `0.0`.** The NBA model
-  has no odds source unless an API key is configured, so its dashboard cells
-  show the straight-up record plus the note *"units require an odds source —
-  showing record only"* instead of fabricated pricing. Before anything is
-  graded at all, the dashboard renders its shell with em-dashes and *"No
-  graded picks yet"*.
+* **Unpriced games are not bets.** A null `ats_result` (or a null
+  `settle.spread_line`), an `ats_result` of `no-line` / `no-pick`, or a null
+  `ml_price`, is excluded from that market's counts entirely — not scored as
+  0.0 and *not* counted as a loss. This is the missing-spread path: a game we
+  never had a spread for never had an ATS bet on it.
+* **Ungraded for units** is a game that was played and graded straight-up but
+  settled *no* market, because no odds were on record for it. It keeps its
+  straight-up result and its row in the graded table, and shows an em dash in
+  the Units column with a `title` and a screen-reader label explaining why.
+  `units.coverage()` returns `{graded, priced, ungraded}` so the site can say
+  how much of a slate its real units actually cover.
+* **A market with no settled bets reports `null`, never `0.0`** — ATS exactly
+  as much as moneyline. A league with nothing priced at all shows the
+  straight-up record plus the note *"units require an odds source — showing
+  record only"* instead of fabricated pricing. Before anything is graded at
+  all, the dashboard renders its shell with em-dashes and *"No graded picks
+  yet"*.
+* **Coverage is per game, not per league.** An odds API can price part of a
+  slate and miss the rest, so a league can have real units that cover only
+  some of its games. Those leagues show their units *and* a note: *"NBA: 1 of
+  4 graded games had no odds logged and are ungraded for units"*. A fully
+  priced league gets no note.
+* **Nothing is keyed on the league name.** Whether a league shows ATS, a
+  moneyline, both or neither is decided purely by the fields present in its
+  payload — `units.py` has no idea which sport it is looking at, and `build.py`
+  picks the track-record columns from the data.
 * ROI is `units / bets`, printed as a percentage.
+
+### Where the odds come from
+
+| League | Source | Price |
+| --- | --- | --- |
+| NFL | nflverse historical closing lines | line only — settled at the -110 convention |
+| NBA | live odds APIs at prediction time: **ParlayAPI** primary, **The Odds API** fallback (both free tier) | real American price, settled exactly as logged |
+
+NBA odds coverage is **per game**: some games get a spread and a moneyline,
+some only one of the two, some neither. Prices are recorded with the pick
+before the game and are never back-filled or invented afterwards, so a day
+with no odds available produces ungraded-for-units games rather than assumed
+ones.
 
 ### Window definitions (Pacific)
 
@@ -249,8 +286,15 @@ no venv of its own; the sibling NFL repo's venv is convenient:
 | `tests/test_build.py` | page rendering, empty states, site-wide invariants |
 | `tests/test_units.py` | settlement arithmetic, Pacific window boundaries |
 | `tests/test_dashboard.py` | the P/L dashboard, units chart, `docs/data`, v1 payloads |
+| `tests/test_ats_pricing.py` | priced spreads, partial odds coverage, the odds methodology |
 | `tests/test_revisions.py` | the revision disclosures |
 | `tests/test_daily.py` | the daily cycle, dry runs, the run log |
+
+Fixture payloads: `nfl.json` / `nba.json` are v1 (no `settle`), `empty.json` is
+the pre-season state, `nfl_priced.json` is a full v2 NFL slate, and there are
+two NBA v2 slates — `nba_unpriced.json` (no odds at all, the record-only path)
+and `nba_priced.json` (mixed coverage: spread + moneyline, spread only,
+neither, and a push).
 
 ## Payload schema
 
@@ -287,8 +331,12 @@ Revisions with `post_kickoff: true` are labelled *"logged after kickoff — not
 graded"*: a pick changed once the ball is in the air is not a prediction, and
 the site says so rather than quietly showing the improved number.
 
-NBA sends `null` for every spread/ATS field and (absent a configured odds key)
-for `ml_price` too, which is why it renders record-only.
+Every one of those keys is optional as far as the builder is concerned. It
+tolerates a missing `settle.spread_price` (older rows, and every NFL row), a
+null `ats_result`, a wholly absent `settle` block (v1), and an NBA payload
+mixing priced and unpriced games inside one slate. `settle.spread_price` is
+absent-or-null on NFL by construction; it is a real American price on NBA
+whenever a provider returned one.
 
 ## Notes on choices made here
 
@@ -305,3 +353,14 @@ for `ml_price` too, which is why it renders record-only.
 * The record shown for an unpriced league is the straight-up (pick-the-winner)
   record, since that is the only thing that can honestly be scored without
   prices.
+* The partial-coverage note counts **all-time** graded games, not the games in
+  the row you are looking at. A per-window count would need a note per cell;
+  one honest all-time sentence per league is easier to read and cannot be
+  misread as a claim about today.
+* A league whose payload still reports `record.ats: null` but whose `settle`
+  blocks carry spreads gets its ATS W-L-P row derived from those settled bets.
+  The site should lead the model repos on this, not wait for them.
+* `docs/` in this commit is a **preview built from `tests/fixtures/`** so the
+  new NBA units rendering is reviewable in a diff. It is fixture data, not
+  live data — the next `daily.py` / `publish.py` run overwrites it (including
+  `docs/data/*.json`) with the real payloads.

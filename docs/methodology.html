@@ -32,8 +32,8 @@ before kickoff/tip-off and graded after the fact, unedited.</p>
   near 50% against the spread, which after the bookmaker&#8217;s vig means a
   <strong>negative return on investment</strong> &#8212; no betting edge.</p>
     <ul>
-      <li>NFL backtest: 50.1% ATS, -0.042 units/bet at -110 vs closing lines - no edge</li>
-      <li>NBA backtest: 49.8% ATS (4373-4404-96), -0.048 units/bet at -110 vs closing lines - no edge (lines grade the model, never feed it)</li>
+      <li>NFL backtest: 49.8% ATS, -4.1% ROI</li>
+      <li>NBA backtest: 50.6% ATS, -3.4% ROI</li>
     </ul>
   <p>That is the expected, honest result against closing lines, which are
   extremely efficient. These models are for fun and for tracking calibrated
@@ -49,11 +49,11 @@ before kickoff/tip-off and graded after the fact, unedited.</p>
   opening information. The totals head additionally uses weather, and a
   rolling starting-QB CPOE feature tracks quarterback play.</p>
   <dl class="stat-grid">
-    <div class="stat"><dt>Straight-up accuracy</dt><dd>67.2%</dd></div>
-    <div class="stat"><dt>Brier score</dt><dd>0.211</dd></div>
-    <div class="stat"><dt>Margin MAE</dt><dd>9.9</dd></div>
-    <div class="stat"><dt>Games</dt><dd>2227</dd></div>
-    <div class="stat"><dt>Seasons</dt><dd>2018-2025</dd></div>
+    <div class="stat"><dt>Straight-up accuracy</dt><dd>66.5%</dd></div>
+    <div class="stat"><dt>Brier score</dt><dd>0.212</dd></div>
+    <div class="stat"><dt>Margin MAE</dt><dd>10.1</dd></div>
+    <div class="stat"><dt>Games</dt><dd>1780</dd></div>
+    <div class="stat"><dt>Seasons</dt><dd>2018-2024</dd></div>
   </dl>
 </section>
 
@@ -62,14 +62,41 @@ before kickoff/tip-off and graded after the fact, unedited.</p>
   <p>A stats-only XGBoost model anchored on an Elo rating &#8212; no betting
   market inputs at all. Features include exponentially weighted four-factors
   (shooting, turnovers, rebounding, free throws) and rest/schedule effects.
-  Because it uses no market data, it publishes no spread comparison.</p>
+  Because it uses no market data, its picks are made without ever seeing a
+  line &#8212; the odds below are attached afterwards, purely to settle the
+  published units.</p>
   <dl class="stat-grid">
-    <div class="stat"><dt>Straight-up accuracy</dt><dd>64.7%</dd></div>
-    <div class="stat"><dt>Brier score</dt><dd>0.219</dd></div>
-    <div class="stat"><dt>Margin MAE</dt><dd>10.8</dd></div>
-    <div class="stat"><dt>Games</dt><dd>8876</dd></div>
-    <div class="stat"><dt>Seasons</dt><dd>2018-19 to 2024-25</dd></div>
+    <div class="stat"><dt>Straight-up accuracy</dt><dd>64.1%</dd></div>
+    <div class="stat"><dt>Brier score</dt><dd>0.225</dd></div>
+    <div class="stat"><dt>Margin MAE</dt><dd>9.4</dd></div>
+    <div class="stat"><dt>Games</dt><dd>3690</dd></div>
+    <div class="stat"><dt>Seasons</dt><dd>2019-2025</dd></div>
   </dl>
+</section>
+
+<section class="sport-section" aria-labelledby="odds-method">
+  <h2 id="odds-method">Where the odds come from</h2>
+  <p><strong>NFL spreads</strong> come from
+  <a href="https://github.com/nflverse" rel="noopener">nflverse</a> historical
+  closing lines. Those are a <em>line only</em> &#8212; nflverse does not
+  publish the price that went with it &#8212; so NFL against-the-spread results
+  are settled at the standard <strong>-110</strong> convention. That figure is
+  a stated assumption, not a recorded price, and it is the only place on this
+  site where a price is assumed at all.</p>
+  <p><strong>NBA moneylines and spreads</strong> come from live odds APIs read
+  at prediction time: <strong>ParlayAPI</strong> first, with
+  <strong>The Odds API</strong> as the fallback (both on their free tiers).
+  Those carry a real price, so NBA bets settle at the <strong>exact price
+  logged with the pick</strong> &#8212; often -110 on a spread, but never
+  assumed to be.</p>
+  <p>Every price is recorded alongside the pick <em>before</em> the game and is
+  never back-filled or invented afterwards. Coverage is <strong>per
+  game</strong>, not per league: some games get a spread and a moneyline, some
+  only one of the two, some neither. A game played with no odds on record is
+  shown as <strong>ungraded for units</strong> &#8212; an em dash in the units
+  column, and counted in the note under the P/L table &#8212; rather than being
+  assumed into a price it never had. Days with no odds at all simply contribute
+  no units.</p>
 </section>
 
 <section class="sport-section" aria-labelledby="eval-method">
@@ -84,7 +111,7 @@ before kickoff/tip-off and graded after the fact, unedited.</p>
 <footer class="site-footer">
   <div class="wrap">
     <p>These are the outputs of a hobby statistical model, published for fun and transparency. Not betting advice.</p>
-    <p class="updated">Updated 2026-08-17 20:26 UTC</p>
+    <p class="updated">Updated 2026-10-24 09:00 UTC</p>
   </div>
 </footer>
 </body>

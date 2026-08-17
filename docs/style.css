@@ -448,6 +448,18 @@ table.pl-table tbody th {
   color: var(--ink-muted);
 }
 
+/* A game with no odds on record: an em dash, deliberately quiet, and never
+   coloured like a settled result. */
+table.history td.units-na {
+  color: var(--ink-muted);
+  cursor: help;
+}
+
+table.history td.pl-cell {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 .stat-sub {
   display: block;
   font-size: 0.72rem;
