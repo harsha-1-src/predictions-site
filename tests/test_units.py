@@ -75,9 +75,39 @@ def test_ats_uses_the_logged_price_when_it_is_not_minus_110():
     assert units.ats_pnl(entry)[1] == pytest.approx(100 / 105, abs=1e-9)
 
 
-def test_ats_defaults_to_minus_110_when_no_price_logged():
-    entry = ats("2026-10-11", "win", price=None)
+@pytest.mark.parametrize(
+    "price,profit",
+    [(-105, 0.952381), (100, 1.0), (-120, 0.833333), (110, 1.1)],
+)
+def test_ats_wins_pay_the_exact_logged_price_not_the_convention(price, profit):
+    """A real spread price is not guaranteed to be -110; settle at what was
+    logged. -105 pays +0.952, +100 pays a full unit."""
+    assert units.ats_pnl(ats("2026-10-11", "win", price=price))[1] == pytest.approx(
+        profit, abs=1e-6
+    )
+    # Losses and pushes never depend on the price.
+    assert units.ats_pnl(ats("2026-10-11", "loss", price=price))[1] == -1.0
+    assert units.ats_pnl(ats("2026-10-11", "push", price=price))[1] == 0.0
+
+
+@pytest.mark.parametrize("settle", [{"spread_line": -3.0}, {"spread_line": -3.0, "spread_price": None}])
+def test_ats_defaults_to_minus_110_only_when_no_price_was_logged(settle):
+    """The NFL case: nflverse gives a closing line but no price, so the -110
+    convention fills in — and only then."""
+    entry = game("2026-10-11", ats_result="win", settle=settle)
     assert units.ats_pnl(entry)[1] == pytest.approx(ATS_WIN, abs=1e-9)
+    assert units.ATS_DEFAULT_PRICE == -110
+
+
+def test_a_priced_and_an_unpriced_spread_settle_differently_in_one_block():
+    entries = [
+        ats("2026-10-11", "win", price=-105),        # +0.952381
+        game("2026-10-11", ats_result="win",
+             settle={"spread_line": -3.0}),          # -110 fallback: +0.909091
+    ]
+    block = units.summarize(entries)["ats"]
+    assert block["n"] == 2 and block["w"] == 2
+    assert block["units"] == pytest.approx(100 / 105 + ATS_WIN, abs=1e-6)
 
 
 @pytest.mark.parametrize("result", ["no-line", "no-pick", None])
@@ -90,6 +120,113 @@ def test_ats_without_a_logged_line_is_not_a_bet_even_if_graded():
     entry = game("2026-10-11", ats_result="win")  # settle.spread_line is null
     assert units.ats_pnl(entry) is None
     assert units.summarize([entry])["ats"] is None
+
+
+# ------------------------------------------------------- the missing-spread path
+
+def test_null_ats_result_is_excluded_from_the_counts_entirely():
+    """No spread logged is not a -110 bet and is emphatically not a loss."""
+    entries = [
+        ats("2026-10-11", "win", price=-110),
+        game("2026-10-11", su_correct=True),   # no spread at all
+        game("2026-10-12", su_correct=False),  # played, still no spread
+    ]
+    block = units.summarize(entries)["ats"]
+    assert (block["n"], block["w"], block["l"], block["p"]) == (1, 1, 0, 0)
+    assert block["units"] == pytest.approx(ATS_WIN, abs=1e-6)
+
+
+def test_a_league_whose_graded_games_are_all_unpriced_reports_ats_none():
+    entries = [game("2026-10-21", su_correct=True), game("2026-10-23", su_correct=False)]
+    summary = units.summarize(entries)
+    assert summary["ats"] is None, "zero gradeable ATS games must be null, not 0.0"
+    assert summary["ats"] != {"units": 0.0, "w": 0, "l": 0, "p": 0, "n": 0, "roi": 0.0}
+
+
+def test_ats_is_never_special_cased_by_league():
+    """An NBA-shaped entry with a real spread and price settles like any other:
+    the engine sees fields, not league names."""
+    nba = game(
+        "2026-10-24",
+        ats_result="win",
+        su_correct=True,
+        settle={"spread_line": -4.5, "spread_price": -105,
+                "ml_price": -140, "ml_result": "win"},
+    )
+    assert units.ats_pnl(nba)[1] == pytest.approx(100 / 105, abs=1e-9)
+    assert units.ml_pnl(nba)[1] == pytest.approx(100 / 140, abs=1e-9)
+    assert units.entry_units(nba) == pytest.approx(100 / 105 + 100 / 140, abs=1e-6)
+
+
+# ----------------------------------------------- per-game units and coverage
+
+def test_entry_units_sums_the_markets_that_settled():
+    both = game("2026-10-11", ats_result="win", su_correct=True,
+                settle={"spread_line": -3.0, "spread_price": -110,
+                        "ml_price": 120, "ml_result": "win"})
+    ats_only = game("2026-10-11", ats_result="loss", su_correct=False,
+                    settle={"spread_line": 2.5, "spread_price": 100})
+    assert units.entry_units(both) == pytest.approx(ATS_WIN + 1.2, abs=1e-6)
+    assert units.entry_units(ats_only) == -1.0
+    assert units.is_priced(both) and units.is_priced(ats_only)
+
+
+def test_an_unpriced_game_has_no_units_rather_than_zero_units():
+    played = game("2026-10-11", su_correct=True)
+    assert units.entry_units(played) is None, "ungraded for units, not break-even"
+    assert units.is_priced(played) is False
+
+
+def test_coverage_counts_the_ungraded_for_units_games():
+    entries = [
+        game("2026-10-11", ats_result="win", su_correct=True,
+             settle={"spread_line": -3.0, "spread_price": -105}),
+        game("2026-10-12", su_correct=True),    # played, no odds
+        game("2026-10-13", su_correct=False),   # played, no odds
+        game("2026-10-14"),                     # not played yet: not graded
+    ]
+    assert units.coverage(entries) == {"graded": 3, "priced": 1, "ungraded": 2}
+
+
+def test_coverage_is_window_scoped_like_everything_else():
+    entries = [
+        game("2026-10-24", ats_result="win", su_correct=True,
+             settle={"spread_line": -3.0, "spread_price": -110}),
+        game("2026-09-01", su_correct=True),
+    ]
+    now = datetime(2026, 10, 24, 18, 0, tzinfo=timezone.utc)
+    assert units.coverage(entries, "today", now) == {
+        "graded": 1, "priced": 1, "ungraded": 0
+    }
+    assert units.coverage(entries, "all") == {"graded": 2, "priced": 1, "ungraded": 1}
+
+
+def test_coverage_of_nothing_is_all_zeroes():
+    assert units.coverage([]) == {"graded": 0, "priced": 0, "ungraded": 0}
+    assert units.coverage(None) == {"graded": 0, "priced": 0, "ungraded": 0}
+
+
+def test_a_mixed_slate_computes_units_over_the_priced_subset_only():
+    """Some games priced, some not: the units are real, they just do not
+    cover the whole slate."""
+    slate = [
+        # spread + moneyline
+        game("2026-10-24", ats_result="win", su_correct=True,
+             settle={"spread_line": -4.5, "spread_price": -105,
+                     "ml_price": -140, "ml_result": "win"}),
+        # spread, no moneyline
+        game("2026-10-24", ats_result="loss", su_correct=False,
+             settle={"spread_line": 2.5, "spread_price": 100}),
+        # neither
+        game("2026-10-24", su_correct=True),
+    ]
+    summary = units.summarize(slate)
+    assert summary["ats"]["n"] == 2 and summary["ml"]["n"] == 1
+    total = units.combine(summary["ats"], summary["ml"])
+    assert total["n"] == 3          # two ATS bets plus one ML bet
+    assert total["units"] == pytest.approx(100 / 105 - 1.0 + 100 / 140, abs=1e-6)
+    assert units.coverage(slate) == {"graded": 3, "priced": 2, "ungraded": 1}
+    assert units.su_record(slate) == {"w": 2, "l": 1, "n": 3}
 
 
 # -------------------------------------------------------------------- ML math

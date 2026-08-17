@@ -9,17 +9,26 @@ Conventions
 -----------
 * One flat unit is staked per pick. There is no staking plan, no Kelly, no
   parlays -- 1u a pick, every pick.
-* Against the spread (ATS) settles at the logged ``settle.spread_price``,
-  defaulting to -110 when the payload does not carry one. A win therefore
-  returns +100/110 = +0.9091u, a loss -1.0u, a push 0.0u.
+* Against the spread (ATS) settles at the **logged** ``settle.spread_price``
+  (American odds, and not necessarily -110). ``ATS_DEFAULT_PRICE`` of -110 is
+  used only as the documented fallback for a payload that logs a spread line
+  with no price -- the NFL case, because nflverse publishes historical closing
+  lines without the juice that went with them. A win pays
+  ``american_profit(price)``, a loss -1.0u, a push 0.0u.
 * Moneyline (ML) settles at the logged ``settle.ml_price`` in American odds:
   a negative price pays 100/|price|, a positive price pays price/100.
-* A game with no price for a market is **not a bet** at all. It is excluded
-  from the counts entirely rather than being scored as 0.0 -- otherwise an
-  ungraded slate would look like a break-even one.
+* A game with no line/price for a market is **not a bet** at all. It is
+  excluded from the counts entirely rather than being scored as 0.0 -- neither
+  as a loss nor as a break-even. A game with no bet on either market is
+  "ungraded for units"; see ``coverage``.
 * A market with zero settled bets reports ``None``, never ``0.0``, so the UI
   can say "units unavailable" instead of showing a fabricated break-even.
+  This applies to ATS exactly as it does to the moneyline.
 * Pushes are counted in their own bucket. They are never folded into wins.
+
+Nothing here knows or cares which league an entry came from: whether a league
+has ATS, a moneyline, both or neither is decided purely by the fields present
+in its payload.
 
 Windows are America/Los_Angeles (Pacific) calendar windows: see
 ``window_bounds``. A game is attributed to a window by its ``date`` field,
@@ -39,9 +48,12 @@ __all__ = [
     "american_profit",
     "ats_pnl",
     "combine",
+    "coverage",
     "cumulative_series",
+    "entry_units",
     "filter_window",
     "graded_count",
+    "is_priced",
     "ml_pnl",
     "pacific_tz",
     "su_record",
@@ -239,9 +251,15 @@ def american_profit(price) -> float:
 def ats_pnl(entry):
     """``(result, profit)`` for the ATS side of a game, or ``None``.
 
-    ``None`` means "not a bet": no logged spread line, or an ``ats_result`` of
-    no-line / no-pick / null. NBA sends null for every spread field, so NBA
-    entries always land here.
+    ``None`` means "not a bet": no logged ``settle.spread_line``, or an
+    ``ats_result`` of no-line / no-pick / null. This is the missing-spread
+    path, and it is an exclusion, not a loss and not a -110 assumption -- a
+    game we never had a spread for never had an ATS bet on it.
+
+    A win pays the logged ``settle.spread_price``. When that key is absent
+    (or null) the price falls back to ``ATS_DEFAULT_PRICE`` (-110), which is
+    the documented convention for price-less historical lines such as
+    nflverse's closing spreads. No league is special-cased here.
     """
     settle = (entry or {}).get("settle") or {}
     if settle.get("spread_line") is None:
@@ -277,6 +295,49 @@ def ml_pnl(entry):
     if result == "loss":
         return result, -1.0
     return result, american_profit(price)
+
+
+def entry_units(entry):
+    """Units this single game contributed across every market, or ``None``.
+
+    Sums whichever of ATS and moneyline actually settled. ``None`` -- never
+    ``0.0`` -- means the game is **ungraded for units**: it may well have been
+    played and scored straight-up, but no odds were logged for either market,
+    so there is no honest unit figure to show for it.
+    """
+    scored = [s for s in (ats_pnl(entry), ml_pnl(entry)) if s]
+    if not scored:
+        return None
+    return round(sum(profit for _, profit in scored), 6)
+
+
+def is_priced(entry) -> bool:
+    """True when at least one market on this game settled into a real bet."""
+    return entry_units(entry) is not None
+
+
+def coverage(entries, window: str = "all", now=None) -> dict:
+    """``{"graded", "priced", "ungraded"}`` counts over the graded games.
+
+    ``graded`` counts games with a straight-up result; ``priced`` is how many
+    of those produced at least one settled bet; ``ungraded`` is the remainder
+    -- games that were played but carry no odds at all.
+
+    Odds coverage is per game, not per league: an odds API can price some of a
+    slate and miss the rest. Surfacing the split lets the site show the units
+    it genuinely has *and* say how much of the slate they cover, instead of
+    choosing between hiding real numbers and implying complete ones.
+    """
+    scoped = [
+        e for e in filter_window(entries, window, now)
+        if (e or {}).get("su_correct") is not None
+    ]
+    priced = sum(1 for e in scoped if is_priced(e))
+    return {
+        "graded": len(scoped),
+        "priced": priced,
+        "ungraded": len(scoped) - priced,
+    }
 
 
 def _block(settled):
