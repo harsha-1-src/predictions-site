@@ -199,6 +199,19 @@ h3 {
   color: var(--badge-tossup-ink);
 }
 
+/* Predicted outside the horizon policy: a quiet, outlined badge. It marks a
+   scope, not a bad result, so it never borrows the win/loss colours. */
+.badge-policy {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--ink-muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: help;
+  vertical-align: 0.05em;
+}
+
 /* Stat grid */
 
 .stat-grid {
@@ -446,6 +459,20 @@ table.pl-table tbody th {
   margin: 0.5rem 0 0;
   font-size: 0.8rem;
   color: var(--ink-muted);
+}
+
+/* The horizon-policy explainer under the picks heading. */
+.policy-note {
+  margin: -0.25rem 0 1.25rem;
+  max-width: 46rem;
+  color: var(--ink-secondary);
+  font-size: 0.9rem;
+}
+
+/* A row kept for honesty but outside the P/L scope: legible, never hidden,
+   just visibly quieter than the rows that count. */
+table.history tr.row-out-of-policy td {
+  color: var(--ink-secondary);
 }
 
 /* A game with no odds on record: an em dash, deliberately quiet, and never

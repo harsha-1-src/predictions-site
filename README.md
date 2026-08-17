@@ -89,6 +89,64 @@ to respect that split:
 wording cannot quietly reintroduce daily commit churn or, worse, silently
 swallow a host change.
 
+## The prediction horizon (and one deliberate asymmetry)
+
+The model repos publish live predictions only for games starting **3–7 days
+out** (targeting 3–5, hard max 7). Nearer than that, a prediction is still
+being revised; further out, none is made at all. Each payload states the
+window in a top-level `policy` block, and **this repo never hardcodes the
+numbers** — every sentence on the site is formatted from that block, so
+changing the window is a payload change, not a code change. A payload with no
+`policy` block gets no policy prose anywhere rather than prose quoting a
+window nobody chose.
+
+**Picks page.** Only entries with `in_window: true` are shown. The payload
+deliberately stays complete (it still carries legacy far-future picks with
+`in_window: false`, and `docs/data/*.json` publishes all of them); filtering
+for display is this repo's job. A payload with no `in_window` key *anywhere*
+predates the contract and every upcoming entry is shown — "no key" is not the
+same statement as `in_window: false`, and an old payload must never be able to
+blank the picks page.
+
+Three picks-page states, each a calm sentence rather than a blank or an error:
+
+| State | What the page says |
+| --- | --- |
+| games in window | the pick cards |
+| upcoming games, none in window | *"Nothing is inside the publishing window yet. The next games on the schedule start further out than 7 days…"* |
+| no upcoming entries at all | *"No upcoming picks logged yet — check back at the start of the season."* |
+
+The middle one is the common case right now: it is the off-season and nothing
+is in window. It is distinguished from the third because they are genuinely
+different facts, and a reader landing on the page deserves to know which one
+they are looking at.
+
+**Track record: the asymmetry.** A handful of historic rows (16 NFL week-1, 3
+NBA opening-night) were predicted long before the policy existed. The
+prediction log is append-only, so they are kept and flagged
+`out_of_policy: true` rather than deleted, and then treated *two different
+ways on purpose*:
+
+* **Excluded from every units and P/L figure** — ATS, moneyline, the
+  cumulative chart, every window. The exclusion works exactly like an
+  unbetable game: not a loss, not a 0.0, simply never a bet. Crediting units
+  to picks the current policy would never have published would overstate what
+  this site does.
+* **Kept in the straight-up accuracy record.** They were real graded
+  predictions, and dropping them from the accuracy record would *flatter* it.
+
+That is the honesty trade, and it is stated rather than hidden: the rows stay
+visible on the track record badged *"outside window"* (with a `title` and a
+screen-reader explanation, *"predicted before the 3–7 day policy; excluded
+from P/L"*), their Units cell is an em dash carrying the same explanation, and
+a note under the charts counts them: *"2 graded games were predicted outside
+the current 3–7 day policy and are excluded from P/L. They are still counted
+in the straight-up record above, so straight-up covers more games than the
+units do."* The Methodology page carries the long-form version.
+
+Backtests are unaffected. This is a live-publication policy, not a modelling
+change.
+
 ## Units and P/L conventions
 
 The home page carries a Today / This week / This month × NFL / NBA / Combined
@@ -123,6 +181,12 @@ chart. All of it comes from `units.py`, which follows one set of rules:
   the Units column with a `title` and a screen-reader label explaining why.
   `units.coverage()` returns `{graded, priced, ungraded}` so the site can say
   how much of a slate its real units actually cover.
+* **Out-of-policy games are excluded from every units figure**, and from
+  `units.coverage()` — they are missing from the P/L for a policy reason, not
+  an odds reason, and folding them into the "no odds logged" count would blame
+  the odds provider for a decision the model repo made. `coverage()` therefore
+  describes only the games eligible for P/L; `units.out_of_policy_count()`
+  counts the rest. `su_record()` is the one function that keeps them.
 * **A market with no settled bets reports `null`, never `0.0`** — ATS exactly
   as much as moneyline. A league with nothing priced at all shows the
   straight-up record plus the note *"units require an odds source — showing
@@ -342,6 +406,7 @@ no venv of its own; the sibling NFL repo's venv is convenient:
 | `tests/test_ats_pricing.py` | priced spreads, partial odds coverage, the odds methodology |
 | `tests/test_revisions.py` | the revision disclosures |
 | `tests/test_daily.py` | the daily cycle, dry runs, the run log, publish idempotency |
+| `tests/test_policy.py` | the prediction horizon: picks filtering, both empty states, out-of-policy exclusions, back-compat |
 
 Fixture payloads: `nfl.json` / `nba.json` are v1 (no `settle`), `empty.json` is
 the pre-season state, `nfl_priced.json` is a full v2 NFL slate, and there are
@@ -349,12 +414,48 @@ two NBA v2 slates — `nba_unpriced.json` (no odds at all, the record-only path)
 and `nba_priced.json` (mixed coverage: spread + moneyline, spread only,
 neither, and a push).
 
+Two more carry the horizon policy: `nfl_policy.json` (two in-window picks, one
+legacy far-future pick, two graded games in policy and two out of it — chosen
+so that excluding the flagged games moves the units from +0.82u to -0.09u
+while leaving the 2-2 straight-up record untouched) and
+`nba_policy_offseason.json` (nothing in window at all, plus one graded game
+out of policy, which is the off-season empty state and the singular wording of
+the exclusion note).
+
 ## Payload schema
 
 The builder reads schema **v2** and tolerates **v1** (the pre-P/L payloads):
 missing `settle`, `revisions` and `ml_price` keys are treated as absent, so a
 v1 payload builds cleanly and simply reports no units. That matters during a
 rollout where the two model repos may upgrade at different times.
+
+The **horizon-policy keys** are the newest addition and are likewise optional
+— a payload without them renders exactly as it did before. At the top level:
+
+```jsonc
+"policy": {"min_days": 3, "max_days": 7}
+```
+
+per upcoming entry:
+
+```jsonc
+"horizon_days": 4.2,       // days from prediction time to tip-off/kickoff
+"in_window": true,         // 0 <= horizon_days <= max_days
+"out_of_policy": false     // predicted outside the policy
+```
+
+and per history entry:
+
+```jsonc
+"out_of_policy": false     // the settling prediction was made outside policy
+```
+
+`min_days` / `max_days` may arrive as `3` or `3.0`; both render as "3". A
+missing `out_of_policy` is `false`, so every pre-policy payload stays fully
+inside P/L scope. Only `in_window` drives the picks page, and only
+`out_of_policy` drives the units exclusion — the site never re-derives either
+from `horizon_days`, because only the repo that made the pick knows how far
+out the game was *at the time it was predicted*.
 
 Schema v2 adds, per upcoming entry:
 
@@ -413,7 +514,25 @@ whenever a provider returned one.
 * A league whose payload still reports `record.ats: null` but whose `settle`
   blocks carry spreads gets its ATS W-L-P row derived from those settled bets.
   The site should lead the model repos on this, not wait for them.
-* `docs/` in this commit is a **preview built from `tests/fixtures/`** so the
-  new NBA units rendering is reviewable in a diff. It is fixture data, not
-  live data — the next `daily.py` / `publish.py` run overwrites it (including
-  `docs/data/*.json`) with the real payloads.
+* The horizon policy is read from **whichever payload states one first**, in
+  the fixed NFL-then-NBA order. Both repos emit the same window, so a
+  disagreement would be a bug in one of them; taking the first is
+  deterministic and never invents a blended window that neither repo uses.
+* The policy sentence sits on the picks page only once, under the heading,
+  rather than once per league. Both leagues share the window, and repeating it
+  per section would read like a per-sport rule.
+* `in_window` as the contract defines it (`0 <= horizon_days <= max_days`)
+  admits games *nearer* than `min_days`, so a pick made at four days out is
+  still displayed on the day before the game rather than vanishing from the
+  page as the game approaches. That is the contract's intent and the site
+  follows it literally instead of re-filtering on `min_days`.
+* Out-of-policy rows are styled quieter (`--ink-secondary`) but never hidden,
+  greyed out to illegibility, or coloured like a loss. The badge marks a
+  *scope*, not a bad result, so it deliberately borrows none of the win/loss
+  palette.
+* `docs/` in this commit is a **preview built from `tests/fixtures/`**
+  (`nfl_policy.json` + `nba_policy_offseason.json`, clock pinned to
+  2026-10-24) so the horizon filtering, the off-season empty state and the
+  labelled out-of-policy rows are all reviewable in a diff. It is fixture
+  data, not live data — the next `daily.py` / `publish.py` run overwrites it
+  (including `docs/data/*.json`) with the real payloads.
