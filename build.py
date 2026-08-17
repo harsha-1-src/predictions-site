@@ -85,6 +85,73 @@ POST_KICKOFF_NOTE = "logged after kickoff &#8212; not graded"
 
 EMDASH = "&#8212;"
 
+# ------------------------------------------------------ prediction horizon
+#
+# The model repos publish live predictions only for games starting inside a
+# horizon window, and state that window in the payload's ``policy`` block. The
+# numbers are never hardcoded here: every sentence below is formatted from the
+# payload, so a repo that moves to a 2-6 day window changes the site's prose
+# by shipping a payload, not by needing an edit here.
+
+#: One line under the picks heading explaining what is and is not published.
+POLICY_SENTENCE = (
+    "Picks are published for games starting {lo}&#8211;{hi} days out; games "
+    "closer than that keep being revised, and nothing further out is "
+    "predicted."
+)
+
+#: Picks page, case (a): the sport has upcoming games, but they are all beyond
+#: the window. The common off-season state, and not an error.
+OUT_OF_WINDOW_EMPTY = (
+    "Nothing is inside the publishing window yet. The next games on the "
+    "schedule start further out than {hi} days, so their picks are not "
+    "published — they will appear once those games are {lo}–{hi} days away."
+)
+
+#: The same state when the payload flags entries out of window but carries no
+#: policy block to quote numbers from.
+OUT_OF_WINDOW_EMPTY_PLAIN = (
+    "Nothing is inside the publishing window yet. The next games on the "
+    "schedule start further out than the window, so their picks are not "
+    "published — they will appear as those games get closer."
+)
+
+#: Picks page, case (b): nothing upcoming at all in the payload.
+NO_UPCOMING_EMPTY = (
+    "No upcoming picks logged yet — check back at the start of the season."
+)
+
+#: Track-record row badge for a pick made outside the horizon policy.
+OUT_OF_POLICY_BADGE = "outside window"
+
+#: The screen-reader (and tooltip) explanation attached to that badge.
+OUT_OF_POLICY_EXPLAIN = (
+    "predicted before the {lo}-{hi} day policy; excluded from P/L"
+)
+
+OUT_OF_POLICY_EXPLAIN_PLAIN = (
+    "predicted outside the current horizon policy; excluded from P/L"
+)
+
+#: Coverage note naming how many graded games sit outside the policy, and the
+#: scope difference that creates between the accuracy record and the units.
+OUT_OF_POLICY_NOTE = (
+    "{n} graded {games} {were} predicted outside the current "
+    "{lo}&#8211;{hi} day policy and {are} excluded from P/L. {They} counted "
+    "in the straight-up record above, so straight-up covers more games than "
+    "the units do."
+)
+
+OUT_OF_POLICY_NOTE_PLAIN = (
+    "{n} graded {games} {were} predicted outside the current "
+    "prediction-horizon policy and {are} excluded from P/L. {They} counted "
+    "in the straight-up record above, so straight-up covers more games than "
+    "the units do."
+)
+
+#: Per-row units cell for an out-of-policy game.
+OUT_OF_POLICY_UNITS_TITLE = "excluded from P/L &#8212; predicted outside the policy window"
+
 
 # ---------------------------------------------------------------- formatting
 
@@ -285,6 +352,67 @@ def empty_card(text: str) -> str:
     return f'<div class="card empty-card"><p>{esc(text)}</p></div>'
 
 
+# ------------------------------------------------------ prediction horizon
+
+def fmt_days(value) -> str | None:
+    """A policy bound as a bare number: 3 / 3.5 / None if it is not a number.
+
+    The payload types these as numbers, but ``3`` and ``3.0`` must both read
+    as "3" in prose, and anything unparseable must be refused outright rather
+    than printed -- a sentence with ``None`` in it is worse than no sentence.
+    """
+    if isinstance(value, bool) or value is None:
+        return None
+    try:
+        return f"{float(value):g}"
+    except (TypeError, ValueError):
+        return None
+
+
+def policy_bounds(payloads: dict):
+    """``(lo, hi)`` display strings for the horizon policy, or ``(None, None)``.
+
+    Reads the first payload that carries a usable ``policy`` block, in the
+    fixed ``SPORTS`` order. Both repos emit the same policy, so a disagreement
+    would be a bug in one of them; taking the first is deterministic and never
+    invents a blended window that no repo actually uses.
+    """
+    for sport, _ in SPORTS:
+        policy = (payloads.get(sport) or {}).get("policy") or {}
+        lo = fmt_days(policy.get("min_days"))
+        hi = fmt_days(policy.get("max_days"))
+        if lo is not None and hi is not None:
+            return lo, hi
+    return None, None
+
+
+def policy_sentence(payloads: dict) -> str:
+    """The one-line horizon explainer, or "" for a payload with no policy."""
+    lo, hi = policy_bounds(payloads)
+    if lo is None:
+        return ""
+    return f'<p class="policy-note">{POLICY_SENTENCE.format(lo=lo, hi=hi)}</p>'
+
+
+def visible_upcoming(upcoming) -> list:
+    """The upcoming entries the picks page is allowed to show.
+
+    Only ``in_window`` games are published: nearer games are still being
+    revised and further-out games were never predicted under the current
+    policy. The payload deliberately stays complete (it still carries legacy
+    far-future picks), so the filtering is this repo's job.
+
+    Back-compat: a payload with no ``in_window`` key **anywhere** predates the
+    contract, and every entry is shown. An old payload must never be able to
+    blank the picks page, and "no key" is not the same statement as
+    ``in_window: false``.
+    """
+    entries = [e for e in (upcoming or []) if e is not None]
+    if not any("in_window" in e for e in entries):
+        return entries
+    return [e for e in entries if e.get("in_window")]
+
+
 # --------------------------------------------------------------- dashboard
 
 def _cell(inner: str) -> str:
@@ -466,25 +594,39 @@ def render_game_card(game: dict, sport: str) -> str:
 
 
 def render_index(payloads: dict, now=None) -> str:
+    """The picks page: only games inside the publishing window.
+
+    Three states per league, and each one is a calm sentence rather than a
+    blank space or an error: games to show, games that all sit beyond the
+    window (the off-season case), and no upcoming games logged at all.
+    """
+    lo, hi = policy_bounds(payloads)
     sections = []
     for sport, label in SPORTS:
         payload = payloads.get(sport)
         upcoming = (payload or {}).get("upcoming") or []
-        if not upcoming:
-            body = empty_card(
-                "No upcoming picks logged yet — check back at the "
-                "start of the season."
-            )
-        else:
+        visible = visible_upcoming(upcoming)
+        if visible:
             body = "\n".join(
                 render_game_card(g, sport)
-                for g in sorted(upcoming, key=lambda g: (g.get("date") or "", g.get("game_id") or ""))
+                for g in sorted(visible, key=lambda g: (g.get("date") or "", g.get("game_id") or ""))
             )
+        elif upcoming:
+            body = empty_card(
+                OUT_OF_WINDOW_EMPTY.format(lo=lo, hi=hi)
+                if lo is not None
+                else OUT_OF_WINDOW_EMPTY_PLAIN
+            )
+        else:
+            body = empty_card(NO_UPCOMING_EMPTY)
         sections.append(f"""<section class="sport-section" aria-labelledby="{sport}-picks">
   <h2 id="{sport}-picks">{label}</h2>
   {body}
 </section>""")
     intro = '<h1>This week&#8217;s picks</h1>'
+    horizon = policy_sentence(payloads)
+    if horizon:
+        intro = intro + "\n" + horizon
     dashboard = render_dashboard(payloads, now)
     return intro + "\n" + dashboard + "\n" + "\n".join(sections)
 
@@ -753,13 +895,28 @@ def render_record_summary(record: dict, sport: str, pnl=None) -> str:
     return f'<dl class="stat-grid">\n    {cells}\n  </dl>'
 
 
-def _row_units_cell(game: dict) -> str:
-    """The per-game units cell, or an explicit ungraded-for-units marker.
+def out_of_policy_explanation(lo, hi) -> str:
+    """Why an out-of-policy row carries no units, in one screen-reader line."""
+    if lo is None:
+        return OUT_OF_POLICY_EXPLAIN_PLAIN
+    return OUT_OF_POLICY_EXPLAIN.format(lo=lo, hi=hi)
 
-    A game with no odds on record is never allowed to look like a settled 0.00u
-    or a loss: it gets an em dash carrying both a ``title`` and a screen-reader
-    label saying why.
+
+def _row_units_cell(game: dict, explain: str = OUT_OF_POLICY_EXPLAIN_PLAIN) -> str:
+    """The per-game units cell, or an explicit reason there is no figure.
+
+    A game with no units is never allowed to look like a settled 0.00u or a
+    loss: it gets an em dash carrying both a ``title`` and a screen-reader
+    label saying why. There are two different whys and they are not
+    interchangeable -- no odds were ever logged, or the pick was made outside
+    the horizon policy and is excluded from P/L on purpose.
     """
+    if units.is_out_of_policy(game):
+        return (
+            f'<td class="pl-cell units-na" title="{OUT_OF_POLICY_UNITS_TITLE}">'
+            f'<span aria-hidden="true">{EMDASH}</span>'
+            f'<span class="visually-hidden">{esc(explain)}</span></td>'
+        )
     u = units.entry_units(game)
     if u is None:
         return (
@@ -773,14 +930,20 @@ def _row_units_cell(game: dict) -> str:
     )
 
 
-def render_history_table(history: list, sport: str) -> str:
+def render_history_table(history: list, sport: str, bounds=(None, None)) -> str:
     """The graded-games table.
 
     Which columns appear is decided by what the payload contains, never by the
     sport: an ATS column whenever any graded game carries an ``ats_result``,
     and a units column whenever any graded game settled at least one priced
     market.
+
+    Out-of-policy games stay in this table. They were real graded predictions
+    and hiding them would quietly improve the record on display; instead each
+    one is badged, given a spoken explanation, and shown with no units.
     """
+    lo, hi = bounds
+    explain = out_of_policy_explanation(lo, hi)
     graded = [g for g in history if g.get("su_correct") is not None]
     graded.sort(key=lambda g: (g.get("date") or "", g.get("game_id") or ""), reverse=True)
     graded = graded[:HISTORY_ROW_CAP]
@@ -807,12 +970,21 @@ def render_history_table(history: list, sport: str) -> str:
         if show_ats:
             ats_txt = ATS_LABEL.get(g.get("ats_result"), "&#8212;")
             ats_cell = f"<td>{ats_txt}</td>"
-        units_cell = _row_units_cell(g) if show_units else ""
+        units_cell = _row_units_cell(g, explain) if show_units else ""
         revisions = render_revisions(g)
+        badge = ""
+        row_open = "<tr>"
+        if units.is_out_of_policy(g):
+            badge = (
+                f' <span class="badge badge-policy" title="{esc(explain)}">'
+                f"{OUT_OF_POLICY_BADGE}</span>"
+                f'<span class="visually-hidden">, {esc(explain)}</span>'
+            )
+            row_open = '<tr class="row-out-of-policy">'
         rows.append(
-            "<tr>"
+            row_open +
             f"<td>{fmt_date_short(g.get('date'))}</td>"
-            f'<td class="matchup-cell">{esc(matchup)}{revisions}</td>'
+            f'<td class="matchup-cell">{esc(matchup)}{badge}{revisions}</td>'
             f"<td>{esc(g.get('pick') or '?')} ({fmt_pct(g.get('pick_prob'), 0)})</td>"
             f'<td class="{mark_cls}"><span aria-hidden="true">{mark}</span>'
             f'<span class="visually-hidden">{mark_label}</span></td>'
@@ -834,7 +1006,33 @@ def render_history_table(history: list, sport: str) -> str:
 </div>"""
 
 
+def _out_of_policy_note(history, bounds) -> str:
+    """The note naming how many graded games are excluded from P/L, or "".
+
+    Rendered only when there is something to disclose. It also states the
+    scope difference it creates -- straight-up counts these games, units do
+    not -- because a reader comparing the two numbers deserves the reason on
+    the same page, not a footnote elsewhere.
+    """
+    n = units.out_of_policy_count(history, "all")
+    if not n:
+        return ""
+    lo, hi = bounds
+    plural = n != 1
+    fields = {
+        "n": n,
+        "games": "games" if plural else "game",
+        "were": "were" if plural else "was",
+        "are": "are" if plural else "is",
+        "They": "They are still" if plural else "It is still",
+    }
+    template = OUT_OF_POLICY_NOTE if lo is not None else OUT_OF_POLICY_NOTE_PLAIN
+    body = template.format(lo=lo, hi=hi, **fields)
+    return f'<p class="pl-note pl-note-policy">{body}</p>'
+
+
 def render_track_record(payloads: dict) -> str:
+    bounds = policy_bounds(payloads)
     sections = []
     for sport, label in SPORTS:
         payload = payloads.get(sport)
@@ -867,7 +1065,10 @@ def render_track_record(payloads: dict) -> str:
                 note = _coverage_note(label, units.coverage(history, "all"))
                 if note:
                     parts.append(note)
-                table = render_history_table(history, sport)
+                policy_note = _out_of_policy_note(history, bounds)
+                if policy_note:
+                    parts.append(policy_note)
+                table = render_history_table(history, sport, bounds)
                 if table:
                     parts.append(table)
                 body = "\n  ".join(parts)
@@ -897,6 +1098,43 @@ def render_backtest_stats(payload) -> str:
         for name, value in stats
     )
     return f'<dl class="stat-grid">\n    {cells}\n  </dl>'
+
+
+def render_horizon_section(payloads: dict) -> str:
+    """The "Prediction horizon" section, or "" when no payload states a policy.
+
+    Every number in the prose comes from the payload's ``policy`` block. A
+    payload that predates the policy gets no section at all rather than a
+    section quoting a window this site invented.
+    """
+    lo, hi = policy_bounds(payloads)
+    if lo is None:
+        return ""
+    return f"""
+
+<section class="sport-section" aria-labelledby="horizon-method">
+  <h2 id="horizon-method">Prediction horizon</h2>
+  <p>Live picks are published only for games starting
+  <strong>{lo}&#8211;{hi} days out</strong>. Closer than that, a prediction is
+  still moving: injuries, rest decisions and line moves keep changing the
+  inputs, and republishing a pick every few hours would make the log a diary
+  of revisions rather than a record of forecasts. Further out than
+  {hi} days, no prediction is made at all &#8212; the fixture is on the
+  schedule, but who will actually be available to play is not yet knowable.</p>
+  <p>A few picks on this site were logged long before that policy existed, at
+  much longer lead times. The prediction log is append-only, so they are
+  <strong>kept and labelled</strong> rather than deleted: you will find them
+  on the track record badged <em>{OUT_OF_POLICY_BADGE}</em>, with no units.
+  They are <strong>excluded from every P/L figure</strong> &#8212; crediting
+  units to picks the current policy would never have published would overstate
+  what this site actually does &#8212; but they remain
+  <strong>counted in the straight-up accuracy record</strong>, because they
+  were genuine graded predictions and dropping them would flatter the model.
+  Wherever those two scopes differ, the page says so.</p>
+  <p>Backtests are unaffected. This is a live-publication policy, not a
+  modelling change: the walk-forward evaluation below scores every historical
+  game in its seasons, at whatever lead time the backtest implies.</p>
+</section>"""
 
 
 def render_methodology(payloads: dict) -> str:
@@ -978,7 +1216,7 @@ before kickoff/tip-off and graded after the fact, unedited.</p>
   column, and counted in the note under the P/L table &#8212; rather than being
   assumed into a price it never had. Days with no odds at all simply contribute
   no units.</p>
-</section>
+</section>{render_horizon_section(payloads)}
 
 <section class="sport-section" aria-labelledby="eval-method">
   <h2 id="eval-method">Evaluation</h2>
