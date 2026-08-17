@@ -167,11 +167,73 @@ The log line looks like:
 `logs/` is gitignored (only `logs/.gitkeep` is tracked) — it is a local
 operational record, not site content.
 
-A cron entry, e.g. daily at 09:00:
+## Scheduling (the canonical setup)
 
+This repo's `daily.py` is the ONE thing to schedule: it runs both model
+repos' `daily` and then builds, commits and pushes. Per-repo entries are
+only a fallback (see each model's README).
+
+Target: **03:00 America/Los_Angeles**, timezone-pinned rather than
+assuming the machine's clock.
+
+Pin the interpreter too: use a model repo's venv python, which has the
+`tzdata` package. The build falls back to a built-in US-Pacific DST rule
+when `zoneinfo` has no database (verified to render byte-identical
+output), but a real tz database is the better default.
+
+**cron** (Vixie/Debian — `CRON_TZ` applies to entries that follow it; on
+cron implementations without `CRON_TZ`, set `TZ=America/Los_Angeles` in
+the crontab instead):
+
+```cron
+CRON_TZ=America/Los_Angeles
+# nightly full cycle at 03:00 PT
+0 3 * * * cd /path/to/predictions-site && ../nfl-model/.venv/bin/python daily.py >> logs/automation.log 2>&1
+# intraday revision checks, hourly 06:00-20:00 PT (each model's sync
+# exits immediately once the day's first game has started)
+0 6-20 * * * cd /path/to/nfl-model && .venv/bin/python main.py sync >> logs/automation.log 2>&1
+5 6-20 * * * cd /path/to/nba-model && .venv/bin/python main.py sync >> logs/automation.log 2>&1
 ```
-0 9 * * * cd /path/to/predictions-site && python daily.py
+
+**launchd** (macOS, `~/Library/LaunchAgents/com.predictions.daily.plist`)
+— launchd fires on system-local time, so pin TZ explicitly:
+
+```xml
+<key>EnvironmentVariables</key><dict>
+  <key>TZ</key><string>America/Los_Angeles</string></dict>
+<key>WorkingDirectory</key><string>/path/to/predictions-site</string>
+<key>ProgramArguments</key><array>
+  <string>/path/to/nfl-model/.venv/bin/python</string><string>daily.py</string></array>
+<key>StartCalendarInterval</key><dict>
+  <key>Hour</key><integer>3</integer><key>Minute</key><integer>0</integer></dict>
+<key>StandardOutPath</key><string>/path/to/predictions-site/logs/automation.log</string>
+<key>StandardErrorPath</key><string>/path/to/predictions-site/logs/automation.log</string>
 ```
+
+**Windows Task Scheduler** (set the machine TZ to Pacific, or schedule
+the Pacific-equivalent local time):
+
+```powershell
+$act  = New-ScheduledTaskAction -Execute "C:\path\to\nfl-model\.venv\Scripts\python.exe" `
+        -Argument "daily.py" -WorkingDirectory "C:\path\to\predictions-site"
+$trg  = New-ScheduledTaskTrigger -Daily -At 3:00am
+$set  = New-ScheduledTaskSettingsSet -WakeToRun -StartWhenAvailable
+Register-ScheduledTask -TaskName "predictions-daily" -Action $act -Trigger $trg -Settings $set
+```
+
+**Waking the machine.** A scheduler cannot run on a sleeping host unless
+you ask it to wake:
+
+- macOS: `sudo pmset repeat wakeorpoweron MTWRFSU 02:55:00`
+- Windows: enable *Power Options → Sleep → Allow wake timers*, plus the
+  `-WakeToRun` setting above.
+- A fully powered-off machine cannot be woken by cron/launchd; use
+  `wakeorpoweron` (Mac) or BIOS wake-on-RTC, or run the job on an
+  always-on host.
+
+`StartWhenAvailable` / `anacron`-style catch-up matters: a missed 03:00
+run is harmless because `daily` is idempotent — re-running it appends
+nothing and publishes nothing when nothing changed.
 
 ## Tests
 
