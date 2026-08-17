@@ -15,9 +15,12 @@ honest result against closing lines. See the site's Methodology page.
 ```
 payloads/           input payloads (nfl.json, nba.json) — gitignored
 assets/style.css    the one stylesheet (copied into docs/ at build time)
-build.py            payloads -> docs/ (index, track-record, methodology)
+units.py            flat-1u profit and loss engine (settlement + PST windows)
+build.py            payloads -> docs/ (index, track-record, methodology, data)
 publish.py          export payloads from the model repos, build, commit, push
+daily.py            the daily cycle: run both models, republish, log
 docs/               generated output, served by GitHub Pages
+logs/               local run log (gitignored; only .gitkeep is tracked)
 tests/              pytest suite with fixture payloads
 ```
 
@@ -27,16 +30,96 @@ tests/              pytest suite with fixture payloads
 
 ```
 python build.py
+python build.py --now 2026-10-24T18:00:00+00:00   # pin the clock (previews)
 ```
 
 Reads `payloads/nfl.json` and `payloads/nba.json` (either may be missing —
 that sport renders in an empty state) and writes the site into `docs/`.
+`--now` only affects which games fall into the Today / This week / This month
+dashboard rows; it exists so previews and tests are deterministic.
+
+## Units and P/L conventions
+
+The home page carries a Today / This week / This month × NFL / NBA / Combined
+profit-and-loss dashboard, and the track record carries a cumulative-units
+chart. All of it comes from `units.py`, which follows one set of rules:
+
+* **One flat unit per pick.** No staking plan, no Kelly, no parlays.
+* **ATS settles at -110** unless the payload logs a different
+  `settle.spread_price`. A win pays +100/110 = **+0.9091u**, a loss **-1.0u**,
+  a push **0.0u**.
+* **Moneylines settle at the logged price** (`settle.ml_price`, American
+  odds): a negative price pays 100/|price|, a positive price pays price/100.
+  The price is the one that was logged with the pick, not a later one.
+* **Pushes are counted separately** (the record is W-L-P) and are never
+  reported as wins. They stay in the ROI denominator, because a push still
+  used a slot on the card.
+* **Unpriced games are not bets.** An `ats_result` of `no-line` / `no-pick` /
+  null, or a null `ml_price`, is excluded from the counts entirely rather than
+  scored as 0.0 — otherwise an ungraded slate would read as a break-even one.
+* **A market with no settled bets reports `null`, never `0.0`.** The NBA model
+  has no odds source unless an API key is configured, so its dashboard cells
+  show the straight-up record plus the note *"units require an odds source —
+  showing record only"* instead of fabricated pricing. Before anything is
+  graded at all, the dashboard renders its shell with em-dashes and *"No
+  graded picks yet"*.
+* ROI is `units / bets`, printed as a percentage.
+
+### Window definitions (Pacific)
+
+Windows are **America/Los_Angeles calendar** windows, and a game is attributed
+to one by its payload `date` field (the game's local calendar date):
+
+| Window | Definition |
+| --- | --- |
+| Today | the current Pacific calendar day |
+| This week | **Monday to Sunday** of the current Pacific week |
+| This month | the 1st to the last day of the current Pacific month |
+| All time | everything, including entries with no usable date |
+
+So a game dated `2026-12-31` and one dated `2027-01-01` are always different
+days and different months, but they share a Mon–Sun week.
+
+### The zoneinfo / tzdata caveat
+
+`units.py` uses stdlib `zoneinfo`. Windows ships no system tz database, so
+`ZoneInfo("America/Los_Angeles")` raises `ZoneInfoNotFoundError` unless the
+`tzdata` package is installed — and this repo is deliberately dependency-free.
+When that happens we fall back to `units._PacificApprox`, a documented
+approximation of the post-2007 US rule: PDT (UTC-07:00) from the second Sunday
+in March at 02:00 local to the first Sunday in November at 02:00 local, PST
+(UTC-08:00) otherwise.
+
+The approximation is exact under current law from 2007 onwards. It would be
+wrong for pre-2007 dates or after any future rule change (permanent DST, say).
+It is only ever used to decide which Pacific day "now" falls on, so the worst
+case is an hour of slop at a DST cutover. On the machine this was developed on
+the real tz database *was* available (the NFL repo's venv has `tzdata`), so the
+fallback is insurance rather than the normal path — `tests/test_units.py`
+exercises it directly either way.
+
+## The `docs/data/*.json` contract
+
+Every build also writes the raw payloads to:
+
+```
+docs/data/nfl.json
+docs/data/nba.json
+```
+
+This is the machine-readable *"what is currently live"* record. The model
+repos' `sync` command fetches these and diffs them against a freshly generated
+payload to decide whether the published site is stale. They are re-serialised
+from the parsed payload (indented, key-sorted) so the published file is always
+valid JSON and diffs stay stable. A sport whose payload is missing or
+unparseable is left alone rather than replaced with a misleading empty object.
 
 ## Publishing
 
 ```
 python publish.py               # export + build + commit + push
 python publish.py --skip-export # reuse whatever is already in payloads/
+python publish.py --dry-run     # build and report; never commit or push
 ```
 
 Without `--skip-export`, publish.py runs each sibling model repo's exporter
@@ -47,12 +130,47 @@ warning and the previous payload is reused. It then copies each repo's
 (`publish: <UTC timestamp>`, skipped cleanly when nothing changed), and
 pushes to `origin main` if a remote named `origin` is configured.
 
-Each model's `weekly` command triggers `publish.py` automatically, so the
-site normally updates itself whenever a model runs its weekly cycle. A cron
-fallback works too, e.g. every Tuesday at 09:00:
+Each model's `weekly` command triggers `publish.py --skip-export`
+automatically, so that path must keep working.
+
+## The daily cycle
 
 ```
-0 9 * * 2 cd /path/to/predictions-site && python publish.py
+python daily.py                 # the live cycle
+python daily.py --dry-run       # build and report; no commit, no push
+python daily.py --skip-models   # publish the payloads the models already have
+python publish.py --daily       # alias for the first form
+```
+
+`daily.py` is the once-a-day entry point:
+
+1. run each sibling repo's own `daily` (`<repo>/.venv/Scripts/python.exe
+   main.py daily`, from the repo's directory, 1800s timeout);
+2. copy both `reports/site_payload.json` files into `payloads/`;
+3. rebuild `docs/` (including `docs/data/*.json`);
+4. commit and push to `origin` when there is anything to commit;
+5. append one line to `logs/automation.log`.
+
+A model repo that is missing, has no venv, fails, or hangs produces a warning
+and the cycle continues with that sport's previous payload. One broken model
+must not take the whole site down, and a stale-but-honest page beats no page.
+
+Use `--dry-run` to rehearse: it does everything except stage, commit and push,
+and prints the paths that *would* be committed.
+
+The log line looks like:
+
+```
+2026-10-24T09:14:07Z daily nba=OK nfl=FAIL site=changed pushed=y
+```
+
+`logs/` is gitignored (only `logs/.gitkeep` is tracked) — it is a local
+operational record, not site content.
+
+A cron entry, e.g. daily at 09:00:
+
+```
+0 9 * * * cd /path/to/predictions-site && python daily.py
 ```
 
 ## Tests
@@ -63,3 +181,65 @@ no venv of its own; the sibling NFL repo's venv is convenient:
 ```
 ../nfl-model/.venv/Scripts/python.exe -m pytest -q
 ```
+
+| File | Covers |
+| --- | --- |
+| `tests/test_build.py` | page rendering, empty states, site-wide invariants |
+| `tests/test_units.py` | settlement arithmetic, Pacific window boundaries |
+| `tests/test_dashboard.py` | the P/L dashboard, units chart, `docs/data`, v1 payloads |
+| `tests/test_revisions.py` | the revision disclosures |
+| `tests/test_daily.py` | the daily cycle, dry runs, the run log |
+
+## Payload schema
+
+The builder reads schema **v2** and tolerates **v1** (the pre-P/L payloads):
+missing `settle`, `revisions` and `ml_price` keys are treated as absent, so a
+v1 payload builds cleanly and simply reports no units. That matters during a
+rollout where the two model repos may upgrade at different times.
+
+Schema v2 adds, per upcoming entry:
+
+```jsonc
+"ml_price": -145 | null,
+"revisions": [ /* as below */ ]
+```
+
+and per history entry:
+
+```jsonc
+"settle": {
+  "spread_line": -3.5 | null, "spread_price": -110 | null,
+  "ml_price": -180 | null,    "ml_result": "win" | "loss" | "push" | null
+},
+"revisions": [{
+  "logged_at": "2026-09-24T13:00:00+00:00", "pick": "PHI",
+  "pick_prob": 0.61, "pred_margin": -4.0,
+  "spread_line": -3.0 | null, "ml_price": -165 | null,
+  "post_kickoff": false
+}]
+```
+
+A graded game with more than one revision renders a `<details>` disclosure on
+the track record listing the original pick and every edit with its timestamp.
+Revisions with `post_kickoff: true` are labelled *"logged after kickoff — not
+graded"*: a pick changed once the ball is in the air is not a prediction, and
+the site says so rather than quietly showing the improved number.
+
+NBA sends `null` for every spread/ATS field and (absent a configured odds key)
+for `ml_price` too, which is why it renders record-only.
+
+## Notes on choices made here
+
+* The dashboard cell for a league shows ATS and moneyline units **combined**
+  into one figure, since a reader wants "how did the NFL model do", not two
+  numbers to add up. The per-market split lives on the track record page.
+* Every units figure is printed with an explicit sign (`+1.24u`, `-0.76u`), so
+  the green/red colour coding is reinforcement rather than the only cue. Both
+  colours are defined for light and dark themes as CSS variables.
+* The cumulative-units chart plots one point per calendar date (multi-game
+  days collapse to their end-of-day total) and is skipped entirely when there
+  is nothing graded — the same convention as the running-accuracy chart, which
+  is unchanged, as is the 200-row cap on the history table.
+* The record shown for an unpriced league is the straight-up (pick-the-winner)
+  record, since that is the only thing that can honestly be scored without
+  prices.
