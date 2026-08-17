@@ -1,3 +1,4 @@
+import json
 """Tests for the daily orchestration and publish.py's dry run.
 
 Nothing here touches the real git repository or runs a real model: the git
@@ -226,3 +227,40 @@ def test_logs_directory_is_ignored_except_for_its_keepfile():
     assert "logs/*" in ignore
     assert "!logs/.gitkeep" in ignore
     assert (REPO / "logs" / ".gitkeep").exists()
+
+
+# ------------------------------------------------- no-op publishing (churn)
+def test_rebuild_without_content_change_leaves_docs_untouched(tmp_path, monkeypatch):
+    """A daily re-run must not push a commit whose only diff is the
+    run's own timestamps — otherwise the site churns a commit a day."""
+    import build
+    import publish
+
+    payloads = tmp_path / "payloads"
+    payloads.mkdir()
+    src = Path(__file__).parent / "fixtures"
+    (payloads / "nfl.json").write_text((src / "nfl_priced.json").read_text(
+        encoding="utf-8"), encoding="utf-8")
+    docs = tmp_path / "docs"
+    monkeypatch.setattr(publish, "PAYLOAD_DIR", payloads)
+    monkeypatch.setattr(publish, "OUT_DIR", docs)
+
+    assert publish.build_site() is True, "first build populates docs/"
+    before = {p.relative_to(docs): p.stat().st_mtime_ns
+              for p in docs.rglob("*") if p.is_file()}
+    assert before, "docs/ should contain files"
+
+    # Same payload, later clock: generated_at moves, nothing else does.
+    assert publish.build_site() is False
+    after = {p.relative_to(docs): p.stat().st_mtime_ns
+             for p in docs.rglob("*") if p.is_file()}
+    assert after == before, "no file may be rewritten by a no-op rebuild"
+
+    # A real content change is still adopted.
+    payload = json.loads((payloads / "nfl.json").read_text(encoding="utf-8"))
+    payload["upcoming"][0]["pick_prob"] = 0.999
+    (payloads / "nfl.json").write_text(json.dumps(payload), encoding="utf-8")
+    assert publish.build_site() is True
+    assert "0.999" in (docs / "data" / "nfl.json").read_text(encoding="utf-8") or \
+        "99.9" in (docs / "index.html").read_text(encoding="utf-8")
+    assert build  # imported for the build path under test

@@ -11,9 +11,11 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -152,15 +154,54 @@ def commit_and_push(dry_run: bool = False) -> tuple[bool, bool]:
     return True, True
 
 
-def build_site():
-    """Rebuild docs/ from payloads/. Imported lazily so this module stays
-    usable (for its git helpers) without pulling the builder in."""
+# Any timestamp WITH a time component (payload generated_at, footer
+# "generated" line). Bare YYYY-MM-DD dates are real content — game dates,
+# window labels — and are deliberately NOT masked.
+_VOLATILE_TS = re.compile(
+    r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?\s*(Z|UTC|[+-]\d{2}:?\d{2})?")
+
+
+def _normalized(path: Path) -> str:
+    return _VOLATILE_TS.sub("<ts>", path.read_text(encoding="utf-8", errors="replace"))
+
+
+def _materially_changed(new_dir: Path, cur_dir: Path) -> bool:
+    """True when the freshly built site differs from what is on disk by
+    anything other than the run's timestamps.
+
+    Without this every run would rewrite generated_at, look 'changed' to
+    git, and push an empty daily commit forever.
+    """
+    if not cur_dir.exists():
+        return True
+    rel = lambda d: {p.relative_to(d) for p in d.rglob("*") if p.is_file()}  # noqa: E731
+    if rel(new_dir) != rel(cur_dir):
+        return True
+    return any(_normalized(new_dir / r) != _normalized(cur_dir / r)
+               for r in sorted(rel(new_dir)))
+
+
+def build_site(force: bool = False) -> bool:
+    """Rebuild the site and adopt it into docs/ only when it materially
+    changed. Returns True when docs/ was updated.
+
+    Imported lazily so this module stays usable (for its git helpers)
+    without pulling the builder in.
+    """
     sys.path.insert(0, str(ROOT))
     import build  # stdlib-only sibling module
 
-    out = build.build(PAYLOAD_DIR, OUT_DIR)
-    print(f"built site into {out}")
-    return out
+    with tempfile.TemporaryDirectory() as tmp:
+        staged = Path(tmp) / "docs"
+        build.build(PAYLOAD_DIR, staged)
+        if not force and not _materially_changed(staged, OUT_DIR):
+            print("site content unchanged - docs/ left untouched")
+            return False
+        if OUT_DIR.exists():
+            shutil.rmtree(OUT_DIR)
+        shutil.copytree(staged, OUT_DIR)
+    print(f"built site into {OUT_DIR}")
+    return True
 
 
 def main(argv=None) -> int:
