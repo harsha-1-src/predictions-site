@@ -831,7 +831,10 @@ def build(payload_dir=None, out_dir=None, now=None) -> Path:
 
     ``now`` pins the clock used for the Pacific dashboard windows; it defaults
     to the real UTC clock and exists so tests (and previews) are deterministic.
+    It accepts the same ISO-8601 string the ``--now`` CLI flag takes, as well
+    as a datetime.
     """
+    now = units.coerce_now(now) if now is not None else None
     payload_dir = Path(payload_dir) if payload_dir else ROOT / "payloads"
     out_dir = Path(out_dir) if out_dir else ROOT / "docs"
     out_dir.mkdir(parents=True, exist_ok=True)

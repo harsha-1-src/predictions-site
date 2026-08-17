@@ -136,16 +136,29 @@ def pacific_tz() -> tzinfo:
     return tz
 
 
+def coerce_now(now=None) -> datetime:
+    """Normalize a ``now`` argument to an aware UTC-based datetime.
+
+    Accepts None (real clock), an ISO-8601 string (the same form the
+    ``--now`` CLI flag takes, so the programmatic API and the CLI agree),
+    a naive datetime (read as UTC), or an aware datetime.
+    """
+    if now is None:
+        return datetime.now(timezone.utc)
+    if isinstance(now, str):
+        now = datetime.fromisoformat(now.replace("Z", "+00:00"))
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+    return now
+
+
 def pacific_today(now=None) -> date:
     """The current Pacific calendar date.
 
-    ``now`` may be omitted (real clock), naive (read as UTC) or aware.
+    ``now`` may be omitted (real clock), an ISO string, naive (read as
+    UTC) or aware.
     """
-    if now is None:
-        now = datetime.now(timezone.utc)
-    if now.tzinfo is None:
-        now = now.replace(tzinfo=timezone.utc)
-    return now.astimezone(pacific_tz()).date()
+    return coerce_now(now).astimezone(pacific_tz()).date()
 
 
 def window_bounds(window: str, now=None):

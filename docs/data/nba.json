@@ -1,139 +1,118 @@
 {
   "backtest": {
-    "ats": "50.6% ATS, -3.4% ROI",
-    "brier": 0.225,
-    "margin_mae": 9.4,
-    "n_games": 3690,
-    "seasons": "2019-2025",
-    "su_acc": 0.641
+    "ats": "49.8% ATS (4373-4404-96), -0.048 units/bet at -110 vs closing lines - no edge (lines grade the model, never feed it)",
+    "brier": 0.2188,
+    "margin_mae": 10.77,
+    "n_games": 8876,
+    "seasons": "2018-19 to 2024-25",
+    "su_acc": 0.6469
   },
-  "generated_at": "2026-10-24T08:30:00+00:00",
-  "history": [
-    {
-      "ats_result": null,
-      "away": "LAL",
-      "away_score": 109.0,
-      "date": "2026-10-21",
-      "game_id": "2026_LAL_DEN_1021",
-      "home": "DEN",
-      "home_score": 118.0,
-      "pick": "DEN",
-      "pick_prob": 0.63,
-      "pred_away_score": 110.6,
-      "pred_home_score": 115.2,
-      "revisions": [
-        {
-          "logged_at": "2026-10-20T15:00:00+00:00",
-          "ml_price": null,
-          "pick": "DEN",
-          "pick_prob": 0.63,
-          "post_kickoff": false,
-          "pred_margin": 4.6,
-          "spread_line": null
-        }
-      ],
-      "settle": {
-        "ml_price": null,
-        "ml_result": null,
-        "spread_line": null,
-        "spread_price": null
-      },
-      "su_correct": true,
-      "tier": "Strong"
-    },
-    {
-      "ats_result": null,
-      "away": "GSW",
-      "away_score": 116.0,
-      "date": "2026-10-23",
-      "game_id": "2026_GSW_PHX_1023",
-      "home": "PHX",
-      "home_score": 121.0,
-      "pick": "GSW",
-      "pick_prob": 0.53,
-      "pred_away_score": 115.0,
-      "pred_home_score": 113.8,
-      "revisions": [],
-      "settle": {
-        "ml_price": null,
-        "ml_result": null,
-        "spread_line": null,
-        "spread_price": null
-      },
-      "su_correct": false,
-      "tier": "Toss-up"
-    },
-    {
-      "ats_result": null,
-      "away": "MIL",
-      "away_score": 119.0,
-      "date": "2026-10-24",
-      "game_id": "2026_MIL_CHI_1024",
-      "home": "CHI",
-      "home_score": 104.0,
-      "pick": "MIL",
-      "pick_prob": 0.67,
-      "pred_away_score": 117.3,
-      "pred_home_score": 108.9,
-      "revisions": [],
-      "settle": {
-        "ml_price": null,
-        "ml_result": null,
-        "spread_line": null,
-        "spread_price": null
-      },
-      "su_correct": true,
-      "tier": "Strong"
-    }
-  ],
+  "generated_at": "2026-08-17T20:19:35.912227+00:00",
+  "history": [],
   "record": {
     "ats": null,
-    "brier": 0.239,
-    "graded": 3,
-    "pending": 1,
-    "running": [
-      {
-        "date": "2026-10-21",
-        "graded": 1,
-        "su_acc": 1.0
-      },
-      {
-        "date": "2026-10-23",
-        "graded": 2,
-        "su_acc": 0.5
-      },
-      {
-        "date": "2026-10-24",
-        "graded": 3,
-        "su_acc": 0.6667
-      }
-    ],
-    "su_acc": 0.6667,
-    "su_losses": 1,
-    "su_wins": 2
+    "brier": null,
+    "graded": 0,
+    "pending": 3,
+    "running": [],
+    "su_acc": null,
+    "su_losses": 0,
+    "su_wins": 0
   },
   "sport": "nba",
   "upcoming": [
     {
       "away": "BOS",
-      "date": "2026-10-25",
-      "datetime_utc": "2026-10-25T23:30:00+00:00",
-      "game_id": "2026_BOS_NYK_1025",
-      "home": "NYK",
-      "home_win_prob": 0.44,
-      "logged_at": "2026-10-24T12:00:00+00:00",
+      "date": "2026-10-20",
+      "datetime_utc": "2026-10-20T19:00:00+00:00",
+      "game_id": "0022600001",
+      "home": "DET",
+      "home_win_prob": 0.594,
+      "logged_at": "2026-08-17T18:31:21.788460+00:00",
       "market_line": null,
       "market_total": null,
       "ml_price": null,
       "model_line": null,
-      "pick": "BOS",
-      "pick_prob": 0.56,
-      "pred_away_score": 114.8,
-      "pred_home_score": 110.3,
-      "pred_margin": -4.5,
-      "pred_total": 225.1,
-      "revisions": [],
-      "tier": "Lean"
+      "pick": "DET",
+      "pick_prob": 0.594,
+      "pred_away_score": 107.4,
+      "pred_home_score": 108.8,
+      "pred_margin": 1.4,
+      "pred_total": 216.2,
+      "revisions": [
+        {
+          "logged_at": "2026-08-17T18:31:21.788460+00:00",
+          "ml_price": null,
+          "pick": "DET",
+          "pick_prob": 0.594,
+          "post_kickoff": false,
+          "pred_margin": 1.4,
+          "spread_line": null
+        }
+      ],
+      "tier": "Toss-up"
+    },
+    {
+      "away": "PHI",
+      "date": "2026-10-20",
+      "datetime_utc": "2026-10-20T23:00:00+00:00",
+      "game_id": "0022600002",
+      "home": "NYK",
+      "home_win_prob": 0.808,
+      "logged_at": "2026-08-17T18:31:21.788460+00:00",
+      "market_line": null,
+      "market_total": null,
+      "ml_price": null,
+      "model_line": null,
+      "pick": "NYK",
+      "pick_prob": 0.808,
+      "pred_away_score": 104.0,
+      "pred_home_score": 114.6,
+      "pred_margin": 10.6,
+      "pred_total": 218.7,
+      "revisions": [
+        {
+          "logged_at": "2026-08-17T18:31:21.788460+00:00",
+          "ml_price": null,
+          "pick": "NYK",
+          "pick_prob": 0.808,
+          "post_kickoff": false,
+          "pred_margin": 10.6,
+          "spread_line": null
+        }
+      ],
+      "tier": "Strong"
+    },
+    {
+      "away": "OKC",
+      "date": "2026-10-20",
+      "datetime_utc": "2026-10-21T01:30:00+00:00",
+      "game_id": "0022600003",
+      "home": "SAS",
+      "home_win_prob": 0.595,
+      "logged_at": "2026-08-17T18:31:21.788460+00:00",
+      "market_line": null,
+      "market_total": null,
+      "ml_price": null,
+      "model_line": null,
+      "pick": "SAS",
+      "pick_prob": 0.595,
+      "pred_away_score": 109.4,
+      "pred_home_score": 112.3,
+      "pred_margin": 2.9,
+      "pred_total": 221.7,
+      "revisions": [
+        {
+          "logged_at": "2026-08-17T18:31:21.788460+00:00",
+          "ml_price": null,
+          "pick": "SAS",
+          "pick_prob": 0.595,
+          "post_kickoff": false,
+          "pred_margin": 2.9,
+          "spread_line": null
+        }
+      ],
+      "tier": "Toss-up"
     }
   ]
 }

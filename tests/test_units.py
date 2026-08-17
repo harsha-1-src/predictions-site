@@ -302,3 +302,23 @@ def test_cumulative_series_has_both_markets_when_both_are_priced():
     ]
     series = units.cumulative_series(entries)
     assert sorted(series) == ["ats", "ml"]
+
+
+# --------------------------------------------------------- now-coercion (API)
+def test_coerce_now_accepts_the_same_iso_string_as_the_cli():
+    """build(now=...) and --now must agree; a bare ISO string used to
+    raise AttributeError deep inside window_bounds."""
+    from datetime import datetime, timezone
+
+    import units
+
+    got = units.coerce_now("2026-10-24T18:00:00Z")
+    assert got == datetime(2026, 10, 24, 18, 0, tzinfo=timezone.utc)
+    assert units.coerce_now("2026-10-24T18:00:00+00:00") == got
+    # naive is read as UTC; aware is preserved; None is the live clock
+    assert units.coerce_now(datetime(2026, 10, 24, 18, 0)) == got
+    assert units.coerce_now(got) == got
+    assert units.coerce_now().tzinfo is not None
+    # and the Pacific date derived from the string is the expected one
+    assert str(units.pacific_today("2026-10-24T18:00:00Z")) == "2026-10-24"
+    assert str(units.pacific_today("2026-10-24T05:00:00Z")) == "2026-10-23"
