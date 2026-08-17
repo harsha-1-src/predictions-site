@@ -1,0 +1,127 @@
+{
+  "sport": "nfl",
+  "generated_at": "2026-08-17T09:00:00+00:00",
+  "upcoming": [
+    {
+      "game_id": "2026_01_DAL_NYG",
+      "date": "2026-09-13",
+      "datetime_utc": "2026-09-13T17:00:00+00:00",
+      "away": "DAL",
+      "home": "NYG",
+      "home_win_prob": 0.38,
+      "pick": "DAL",
+      "pick_prob": 0.62,
+      "tier": "Strong",
+      "pred_home_score": 20.4,
+      "pred_away_score": 24.1,
+      "pred_margin": -3.7,
+      "pred_total": 44.5,
+      "model_line": "DAL -3.5",
+      "market_line": "DAL -2.5",
+      "market_total": 45.5,
+      "logged_at": "2026-09-10T14:00:00+00:00"
+    },
+    {
+      "game_id": "2026_01_KC_BUF",
+      "date": "2026-09-14",
+      "datetime_utc": null,
+      "away": "KC",
+      "home": "BUF",
+      "home_win_prob": 0.52,
+      "pick": "BUF",
+      "pick_prob": 0.52,
+      "tier": "Toss-up",
+      "pred_home_score": 27.2,
+      "pred_away_score": 26.4,
+      "pred_margin": 0.8,
+      "pred_total": 53.6,
+      "model_line": "BUF -1.0",
+      "market_line": "BUF -1.5",
+      "market_total": 52.5,
+      "logged_at": "2026-09-10T14:00:00+00:00"
+    }
+  ],
+  "history": [
+    {
+      "game_id": "2026_00_PHI_WAS",
+      "date": "2026-09-06",
+      "away": "PHI",
+      "home": "WAS",
+      "pick": "PHI",
+      "pick_prob": 0.66,
+      "tier": "Strong",
+      "su_correct": true,
+      "home_score": 17.0,
+      "away_score": 27.0,
+      "pred_home_score": 19.5,
+      "pred_away_score": 25.0,
+      "ats_result": "win"
+    },
+    {
+      "game_id": "2026_00_GB_DET",
+      "date": "2026-09-07",
+      "away": "GB",
+      "home": "DET",
+      "pick": "DET",
+      "pick_prob": 0.58,
+      "tier": "Lean",
+      "su_correct": false,
+      "home_score": 20.0,
+      "away_score": 24.0,
+      "pred_home_score": 24.6,
+      "pred_away_score": 21.9,
+      "ats_result": "loss"
+    },
+    {
+      "game_id": "2026_00_SF_LAR",
+      "date": "2026-09-07",
+      "away": "SF",
+      "home": "LAR",
+      "pick": "SF",
+      "pick_prob": 0.55,
+      "tier": "Lean",
+      "su_correct": true,
+      "home_score": 20.0,
+      "away_score": 23.0,
+      "pred_home_score": 21.0,
+      "pred_away_score": 23.5,
+      "ats_result": "push"
+    },
+    {
+      "game_id": "2026_01_MIA_NE",
+      "date": "2026-09-13",
+      "away": "MIA",
+      "home": "NE",
+      "pick": "MIA",
+      "pick_prob": 0.54,
+      "tier": "Toss-up",
+      "su_correct": null,
+      "home_score": null,
+      "away_score": null,
+      "pred_home_score": 20.1,
+      "pred_away_score": 21.4,
+      "ats_result": null
+    }
+  ],
+  "record": {
+    "graded": 3,
+    "pending": 1,
+    "su_wins": 2,
+    "su_losses": 1,
+    "su_acc": 0.6667,
+    "brier": 0.221,
+    "ats": {"w": 1, "l": 1, "p": 1, "pct": 0.5},
+    "running": [
+      {"date": "2026-09-06", "graded": 1, "su_acc": 1.0},
+      {"date": "2026-09-07", "graded": 3, "su_acc": 0.6667}
+    ]
+  },
+  "backtest": {
+    "su_acc": 0.665,
+    "brier": 0.212,
+    "margin_mae": 10.1,
+    "n_games": 1780,
+    "seasons": "2018-2024",
+    "ats": "49.8% ATS, -4.1% ROI"
+  }
+}

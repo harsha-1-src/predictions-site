@@ -1,0 +1,78 @@
+{
+  "sport": "nba",
+  "generated_at": "2026-08-17T08:30:00+00:00",
+  "upcoming": [
+    {
+      "game_id": "2026_BOS_NYK_1024",
+      "date": "2026-10-24",
+      "datetime_utc": "2026-10-24T23:30:00+00:00",
+      "away": "BOS",
+      "home": "NYK",
+      "home_win_prob": 0.44,
+      "pick": "BOS",
+      "pick_prob": 0.56,
+      "tier": "Lean",
+      "pred_home_score": 110.3,
+      "pred_away_score": 114.8,
+      "pred_margin": -4.5,
+      "pred_total": 225.1,
+      "model_line": null,
+      "market_line": null,
+      "market_total": null,
+      "logged_at": "2026-10-23T12:00:00+00:00"
+    }
+  ],
+  "history": [
+    {
+      "game_id": "2026_LAL_DEN_1022",
+      "date": "2026-10-22",
+      "away": "LAL",
+      "home": "DEN",
+      "pick": "DEN",
+      "pick_prob": 0.63,
+      "tier": "Strong",
+      "su_correct": true,
+      "home_score": 118.0,
+      "away_score": 109.0,
+      "pred_home_score": 115.2,
+      "pred_away_score": 110.6,
+      "ats_result": null
+    },
+    {
+      "game_id": "2026_GSW_PHX_1023",
+      "date": "2026-10-23",
+      "away": "GSW",
+      "home": "PHX",
+      "pick": "GSW",
+      "pick_prob": 0.53,
+      "tier": "Toss-up",
+      "su_correct": false,
+      "home_score": 121.0,
+      "away_score": 116.0,
+      "pred_home_score": 113.8,
+      "pred_away_score": 115.0,
+      "ats_result": null
+    }
+  ],
+  "record": {
+    "graded": 2,
+    "pending": 1,
+    "su_wins": 1,
+    "su_losses": 1,
+    "su_acc": 0.5,
+    "brier": 0.248,
+    "ats": null,
+    "running": [
+      {"date": "2026-10-22", "graded": 1, "su_acc": 1.0},
+      {"date": "2026-10-23", "graded": 2, "su_acc": 0.5}
+    ]
+  },
+  "backtest": {
+    "su_acc": 0.641,
+    "brier": 0.225,
+    "margin_mae": 9.4,
+    "n_games": 3690,
+    "seasons": "2019-2025",
+    "ats": "50.6% ATS, -3.4% ROI"
+  }
+}
