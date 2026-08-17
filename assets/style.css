@@ -10,6 +10,7 @@
   --ink-muted: #767d85;
   --accent: #2f6b8f;
   --chart-line: #2f6b8f;
+  --chart-line-2: #9a5b16;
   --chart-ref: #9aa0a6;
   --good: #2c6e49;
   --bad: #9e3b3b;
@@ -31,6 +32,7 @@
     --ink-muted: #8b9199;
     --accent: #7fb0d1;
     --chart-line: #7fb0d1;
+    --chart-line-2: #e0a45f;
     --chart-ref: #6c7278;
     --good: #7fc79a;
     --bad: #e09090;
@@ -251,10 +253,48 @@ h3 {
   fill: var(--chart-line);
 }
 
+.chart-line-2 {
+  fill: none;
+  stroke: var(--chart-line-2);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  stroke-dasharray: 6 3;
+}
+
+.chart-dot-2 {
+  fill: var(--chart-line-2);
+}
+
 .chart-ref {
   stroke: var(--chart-ref);
   stroke-width: 1;
   stroke-dasharray: 4 4;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  font-size: 0.8rem;
+  color: var(--ink-secondary);
+}
+
+.chart-legend .swatch {
+  display: inline-block;
+  width: 0.85rem;
+  height: 0.2rem;
+  border-radius: 2px;
+  margin-right: 0.35rem;
+  vertical-align: middle;
+  background: var(--chart-line);
+}
+
+.chart-legend .swatch-2 {
+  background: var(--chart-line-2);
 }
 
 .chart-grid {
@@ -318,6 +358,101 @@ table.history th {
 .result-loss {
   color: var(--bad);
   font-weight: 700;
+}
+
+/* P/L dashboard */
+
+.dashboard {
+  margin: 1.25rem 0 2rem;
+}
+
+.dashboard h2 {
+  margin: 0 0 0.5rem;
+}
+
+table.pl-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.85rem;
+  background: var(--surface);
+}
+
+table.pl-table th,
+table.pl-table td {
+  text-align: right;
+  padding: 0.45rem 0.7rem;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+table.pl-table thead th,
+table.pl-table tbody th {
+  text-align: left;
+}
+
+table.pl-table tbody tr:last-child th,
+table.pl-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+table.pl-table thead th {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+  font-weight: 600;
+}
+
+table.pl-table thead th:not(:first-child) {
+  text-align: right;
+}
+
+table.pl-table tbody th {
+  font-weight: 600;
+  color: var(--ink-secondary);
+}
+
+.pl-units {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.pl-pos {
+  color: var(--good);
+}
+
+.pl-neg {
+  color: var(--bad);
+}
+
+.pl-flat {
+  color: var(--ink-secondary);
+}
+
+.pl-rec {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.pl-rec-only {
+  font-size: 0.85rem;
+  color: var(--ink-secondary);
+  font-weight: 600;
+}
+
+.pl-note {
+  margin: 0.5rem 0 0;
+  font-size: 0.8rem;
+  color: var(--ink-muted);
+}
+
+.stat-sub {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: var(--ink-muted);
 }
 
 /* Callout */

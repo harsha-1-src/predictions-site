@@ -4,18 +4,25 @@
 Reads payloads/nfl.json and payloads/nba.json (either may be missing) and
 renders plain HTML into docs/. Python 3 stdlib only, zero JavaScript output.
 
+Also writes the raw payloads to docs/data/<sport>.json so "what is live" is
+fetchable by the model repos' `sync` command.
+
 Usage:
-    python build.py                # payloads/ -> docs/
-    build(payload_dir, out_dir)    # injectable paths, used by tests
+    python build.py                     # payloads/ -> docs/
+    python build.py --now 2026-10-24    # pin the clock (previews and tests)
+    build(payload_dir, out_dir, now)    # injectable paths, used by tests
 """
 from __future__ import annotations
 
+import argparse
 import html
 import json
 import shutil
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
+
+import units
 
 ROOT = Path(__file__).resolve().parent
 
@@ -31,12 +38,25 @@ ATS_LABEL = {
     "no-pick": "no pick",
 }
 
+MARKET_LABEL = {"ats": "Against the spread", "ml": "Moneyline"}
+
 DISCLAIMER = (
     "These are the outputs of a hobby statistical model, published for fun "
     "and transparency. Not betting advice."
 )
 
 HISTORY_ROW_CAP = 200
+
+#: Rows of the home-page P/L dashboard (all-time lives on the track record).
+DASH_WINDOWS = (("today", "Today"), ("week", "This week"), ("month", "This month"))
+
+NO_ODDS_NOTE = "units require an odds source &#8212; showing record only"
+
+NO_GRADED_NOTE = (
+    "No graded picks yet &#8212; P/L starts when the first games are played."
+)
+
+EMDASH = "&#8212;"
 
 
 # ---------------------------------------------------------------- formatting
@@ -110,6 +130,29 @@ def fmt_logged(s) -> str:
     return dt.strftime("%Y-%m-%d")
 
 
+def fmt_units(u) -> str:
+    """'+1.82u' / '-0.91u' / '0.00u' — always signed so colour is not the
+    only cue that a number is negative."""
+    if u is None:
+        return EMDASH
+    if abs(u) < 0.005:
+        return "0.00u"
+    return f"{u:+.2f}u"
+
+
+def units_class(u) -> str:
+    if u is None or abs(u) < 0.005:
+        return "pl-flat"
+    return "pl-pos" if u > 0 else "pl-neg"
+
+
+def fmt_price(price) -> str:
+    """American odds with an explicit sign: -180, +145."""
+    if price is None:
+        return EMDASH
+    return f"{int(price):+d}"
+
+
 # ------------------------------------------------------------------- loading
 
 def load_payload(payload_dir: Path, sport: str):
@@ -176,6 +219,106 @@ def empty_card(text: str) -> str:
     return f'<div class="card empty-card"><p>{esc(text)}</p></div>'
 
 
+# --------------------------------------------------------------- dashboard
+
+def _cell(inner: str) -> str:
+    return f'<td class="pl-cell">{inner}</td>'
+
+
+def _units_cell(block) -> str:
+    """A units figure plus its W-L-P record. Pushes get their own slot and are
+    never rolled into the win count."""
+    if not block:
+        return _cell(EMDASH)
+    u = block["units"]
+    record = f'{block["w"]}-{block["l"]}-{block["p"]}'
+    return _cell(
+        f'<span class="pl-units {units_class(u)}">{fmt_units(u)}</span>'
+        f'<span class="pl-rec">{record}</span>'
+    )
+
+
+def _record_cell(record) -> str:
+    """Fallback for a league with no priced market: straight-up W-L only."""
+    if not record or not record["n"]:
+        return _cell(EMDASH)
+    return _cell(
+        f'<span class="pl-rec pl-rec-only">{record["w"]}-{record["l"]}</span>'
+    )
+
+
+def render_dashboard(payloads: dict, now=None) -> str:
+    """Compact Today / This week / This month by league P/L table.
+
+    Leagues with no priced market anywhere (NBA without an odds source) fall
+    back to a straight-up record and say so; a site with nothing graded at all
+    still renders the shell so the page never loses its shape.
+    """
+    histories = {
+        sport: ((payloads.get(sport) or {}).get("history") or [])
+        for sport, _ in SPORTS
+    }
+    total_graded = sum(units.graded_count(h) for h in histories.values())
+
+    # A league counts as "priced" if any market ever settled a bet for it.
+    priced = {}
+    for sport, _ in SPORTS:
+        alltime = units.summarize(histories[sport], "all")
+        priced[sport] = bool(alltime["ats"] or alltime["ml"])
+
+    rows = []
+    for key, label in DASH_WINDOWS:
+        cells = []
+        blocks = []
+        for sport, _ in SPORTS:
+            if not total_graded:
+                cells.append(_cell(EMDASH))
+                continue
+            scoped = units.summarize(histories[sport], key, now)
+            block = units.combine(scoped["ats"], scoped["ml"])
+            blocks.append(block)
+            if block or priced[sport]:
+                cells.append(_units_cell(block))
+            else:
+                cells.append(_record_cell(units.su_record(histories[sport], key, now)))
+        cells.append(_units_cell(units.combine(*blocks)) if total_graded else _cell(EMDASH))
+        rows.append(
+            f'<tr><th scope="row">{esc(label)}</th>' + "".join(cells) + "</tr>"
+        )
+
+    heads = "".join(
+        f'<th scope="col">{esc(label)}</th>' for _, label in SPORTS
+    ) + '<th scope="col">Combined</th>'
+
+    notes = []
+    if not total_graded:
+        notes.append(f'<p class="pl-note">{NO_GRADED_NOTE}</p>')
+    else:
+        for sport, label in SPORTS:
+            if not priced[sport] and units.graded_count(histories[sport]):
+                notes.append(
+                    f'<p class="pl-note">{esc(label)}: {NO_ODDS_NOTE}.</p>'
+                )
+    notes_html = "\n  ".join(notes)
+
+    return f"""<section class="dashboard" aria-labelledby="pl-heading">
+  <h2 id="pl-heading">Profit &amp; loss</h2>
+  <div class="table-scroll">
+    <table class="pl-table">
+      <caption class="visually-hidden">Units won or lost per league, at one
+      flat unit a pick, with the win-loss-push record. Pacific time.</caption>
+      <thead>
+        <tr><th scope="col">Period</th>{heads}</tr>
+      </thead>
+      <tbody>
+        {chr(10).join("        " + r for r in rows).strip()}
+      </tbody>
+    </table>
+  </div>
+  {notes_html}
+</section>"""
+
+
 # ------------------------------------------------------------------- index
 
 def render_game_card(game: dict, sport: str) -> str:
@@ -214,6 +357,11 @@ def render_game_card(game: dict, sport: str) -> str:
             line_txt += f" &#183; market total {market_total:g}"
         lines_html = f'<p class="lines">{line_txt}</p>'
 
+    ml_price = game.get("ml_price")
+    if ml_price is not None:
+        ml_html = f'<p class="lines">Moneyline {fmt_price(ml_price)}</p>'
+        lines_html = lines_html + ml_html if lines_html else ml_html
+
     logged = ""
     if game.get("logged_at"):
         logged = f'<p class="logged">picked {esc(fmt_logged(game["logged_at"]))}</p>'
@@ -231,7 +379,7 @@ def render_game_card(game: dict, sport: str) -> str:
 </article>"""
 
 
-def render_index(payloads: dict) -> str:
+def render_index(payloads: dict, now=None) -> str:
     sections = []
     for sport, label in SPORTS:
         payload = payloads.get(sport)
@@ -251,7 +399,8 @@ def render_index(payloads: dict) -> str:
   {body}
 </section>""")
     intro = '<h1>This week&#8217;s picks</h1>'
-    return intro + "\n" + "\n".join(sections)
+    dashboard = render_dashboard(payloads, now)
+    return intro + "\n" + dashboard + "\n" + "\n".join(sections)
 
 
 # ------------------------------------------------------------- track record
@@ -316,7 +465,99 @@ def running_chart_svg(running: list, label: str) -> str:
 </figure>"""
 
 
-def render_record_summary(record: dict, sport: str) -> str:
+def units_chart_svg(series: dict, label: str) -> str:
+    """Inline SVG: cumulative units over time, with a zero (break-even) line.
+
+    ``series`` is ``units.cumulative_series(...)``. Both markets are drawn when
+    both exist, with a small legend. Returns "" when there is nothing to plot,
+    so an ungraded league renders no chart at all rather than an empty frame.
+    """
+    series = {k: v for k, v in (series or {}).items() if v}
+    if not series:
+        return ""
+
+    width, height = 640, 260
+    mleft, mright, mtop, mbottom = 60, 16, 16, 40
+    plot_w = width - mleft - mright
+    plot_h = height - mtop - mbottom
+
+    days = sorted({d for points in series.values() for d, _ in points})
+    index = {d: i for i, d in enumerate(days)}
+    n = len(days)
+
+    def px(i: int) -> float:
+        if n == 1:
+            return mleft + plot_w / 2
+        return mleft + plot_w * i / (n - 1)
+
+    values = [v for points in series.values() for _, v in points] + [0.0]
+    hi, lo = max(values), min(values)
+    if hi - lo < 1e-9:
+        hi, lo = hi + 1.0, lo - 1.0
+    pad = (hi - lo) * 0.12
+    hi, lo = hi + pad, lo - pad
+    span = hi - lo
+
+    def py(v: float) -> float:
+        return mtop + (hi - v) / span * plot_h
+
+    order = [m for m in ("ats", "ml") if m in series]
+    lines = []
+    for pos, market in enumerate(order):
+        suffix = "" if pos == 0 else "-2"
+        coords = [(px(index[d]), py(v)) for d, v in series[market]]
+        poly = " ".join(f"{x:.1f},{y:.1f}" for x, y in coords)
+        lines.append(f'<polyline class="chart-line{suffix}" points="{poly}"/>')
+        lines.extend(
+            f'<circle class="chart-dot{suffix}" cx="{x:.1f}" cy="{y:.1f}" r="3"/>'
+            for x, y in coords
+        )
+    lines_html = "\n  ".join(lines)
+
+    y0 = py(0.0)
+    x_labels = (
+        f'<text class="chart-label" x="{mleft}" y="{height - 12}"'
+        f' text-anchor="start">{fmt_date_short(days[0])}</text>'
+    )
+    if n > 1:
+        x_labels += (
+            f'\n  <text class="chart-label" x="{width - mright}" y="{height - 12}"'
+            f' text-anchor="end">{fmt_date_short(days[-1])}</text>'
+        )
+
+    endings = ", ".join(
+        f"{MARKET_LABEL[m].lower()} ends at {fmt_units(series[m][-1][1])}"
+        for m in order
+    )
+    aria = f"{label} cumulative units over {n} date{'s' if n != 1 else ''}; {endings}"
+
+    legend = ""
+    if len(order) > 1:
+        items = "".join(
+            f'<li><span class="swatch{"" if pos == 0 else " swatch-2"}"'
+            f' aria-hidden="true"></span>{esc(MARKET_LABEL[m])}</li>'
+            for pos, m in enumerate(order)
+        )
+        legend = f'\n<ul class="chart-legend">{items}</ul>'
+
+    return f"""<figure class="chart">
+<svg viewBox="0 0 {width} {height}" role="img" aria-label="{esc(aria)}" preserveAspectRatio="xMidYMid meet">
+  <line class="chart-grid" x1="{mleft}" y1="{mtop}" x2="{width - mright}" y2="{mtop}"/>
+  <line class="chart-ref" x1="{mleft}" y1="{y0:.1f}" x2="{width - mright}" y2="{y0:.1f}"/>
+  <line class="chart-grid" x1="{mleft}" y1="{mtop + plot_h}" x2="{width - mright}" y2="{mtop + plot_h}"/>
+  <text class="chart-label" x="{mleft - 8}" y="{mtop + 4}" text-anchor="end">{fmt_units(hi)}</text>
+  <text class="chart-label" x="{mleft - 8}" y="{y0 + 4:.1f}" text-anchor="end">0.00u</text>
+  <text class="chart-label" x="{mleft - 8}" y="{mtop + plot_h + 4}" text-anchor="end">{fmt_units(lo)}</text>
+  {x_labels}
+  {lines_html}
+</svg>{legend}
+<figcaption>Cumulative units at one flat unit a pick. The dashed line marks
+break-even; ATS prices at the logged spread price (-110 by default),
+moneylines at their logged American price.</figcaption>
+</figure>"""
+
+
+def render_record_summary(record: dict, sport: str, pnl=None) -> str:
     su_wins = record.get("su_wins", 0)
     su_losses = record.get("su_losses", 0)
     stats = [
@@ -335,6 +576,19 @@ def render_record_summary(record: dict, sport: str) -> str:
                 "Against the spread",
                 f"{ats.get('w', 0)}&#8211;{ats.get('l', 0)}&#8211;{ats.get('p', 0)}"
                 f" ({fmt_pct(ats.get('pct'))})",
+            )
+        )
+    for market in ("ats", "ml"):
+        block = (pnl or {}).get(market)
+        if not block:
+            continue
+        stats.append(
+            (
+                f"Units &#183; {MARKET_LABEL[market].lower()}",
+                f'<span class="{units_class(block["units"])}">'
+                f'{fmt_units(block["units"])}</span> '
+                f'<span class="stat-sub">{block["w"]}-{block["l"]}-{block["p"]}'
+                f", ROI {fmt_pct(block['roi'])}</span>",
             )
         )
     cells = "\n    ".join(
@@ -412,11 +666,22 @@ def render_track_record(payloads: dict) -> str:
                     "logged and will be graded after the games are played."
                 )
             else:
-                parts = [render_record_summary(record, sport)]
+                history = payload.get("history") or []
+                pnl = units.summarize(history, "all")
+                parts = [render_record_summary(record, sport, pnl)]
                 chart = running_chart_svg(record.get("running") or [], label)
                 if chart:
                     parts.append(chart)
-                table = render_history_table(payload.get("history") or [], sport)
+                units_chart = units_chart_svg(
+                    units.cumulative_series(history), label
+                )
+                if units_chart:
+                    parts.append(units_chart)
+                elif units.graded_count(history):
+                    parts.append(
+                        f'<p class="pl-note">{esc(label)}: {NO_ODDS_NOTE}.</p>'
+                    )
+                table = render_history_table(history, sport)
                 if table:
                     parts.append(table)
                 body = "\n  ".join(parts)
@@ -514,7 +779,12 @@ before kickoff/tip-off and graded after the fact, unedited.</p>
 
 # -------------------------------------------------------------------- build
 
-def build(payload_dir=None, out_dir=None) -> Path:
+def build(payload_dir=None, out_dir=None, now=None) -> Path:
+    """Render payloads into ``out_dir``.
+
+    ``now`` pins the clock used for the Pacific dashboard windows; it defaults
+    to the real UTC clock and exists so tests (and previews) are deterministic.
+    """
     payload_dir = Path(payload_dir) if payload_dir else ROOT / "payloads"
     out_dir = Path(out_dir) if out_dir else ROOT / "docs"
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -533,7 +803,7 @@ def build(payload_dir=None, out_dir=None) -> Path:
         "index.html": page_shell(
             "This week's picks · Model Picks",
             "picks",
-            render_index(payloads),
+            render_index(payloads, now),
             updated,
         ),
         "track-record.html": page_shell(
@@ -554,9 +824,54 @@ def build(payload_dir=None, out_dir=None) -> Path:
 
     shutil.copyfile(ROOT / "assets" / "style.css", out_dir / "style.css")
     (out_dir / ".nojekyll").write_text("", encoding="utf-8")
+    write_data(payloads, out_dir)
     return out_dir
 
 
-if __name__ == "__main__":
-    out = build()
+def write_data(payloads: dict, out_dir: Path) -> None:
+    """Publish the raw payloads at docs/data/<sport>.json.
+
+    This is the machine-readable "what is currently live" contract: the model
+    repos' `sync` command diffs their freshly generated payload against these
+    files to decide whether the site is stale. Written from the parsed payload
+    so the published file is always valid JSON; a sport with no payload is
+    left alone rather than being replaced with a misleading empty object.
+    """
+    data_dir = Path(out_dir) / "data"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    for sport, _ in SPORTS:
+        payload = payloads.get(sport)
+        if payload is None:
+            continue
+        (data_dir / f"{sport}.json").write_text(
+            json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+
+
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description="Build the static site.")
+    parser.add_argument("--payloads", default=None, help="payload directory")
+    parser.add_argument("--out", default=None, help="output directory")
+    parser.add_argument(
+        "--now",
+        default=None,
+        help="ISO timestamp pinning the clock for the P/L windows "
+        "(default: the real UTC clock)",
+    )
+    args = parser.parse_args(argv)
+
+    now = None
+    if args.now:
+        now = parse_iso(args.now)
+        if now is None:
+            parser.error(f"could not parse --now {args.now!r} as an ISO timestamp")
+        if now.tzinfo is None:
+            now = now.replace(tzinfo=timezone.utc)
+
+    out = build(args.payloads, args.out, now)
     print(f"built site into {out}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
