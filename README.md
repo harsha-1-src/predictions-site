@@ -406,11 +406,49 @@ and prints the paths that *would* be committed.
 The log line looks like:
 
 ```
-2026-10-24T09:14:07Z daily nba=OK nfl=FAIL site=changed pushed=y
+2026-10-24T09:14:07Z daily nba=OK nfl=FAIL site=changed pushed=y disk_free_gb=12.3 healthcheck=skipped
 ```
 
 `logs/` is gitignored (only `logs/.gitkeep` is tracked) — it is a local
 operational record, not site content.
+
+### Ops hardening: the disk guard and the healthcheck ping
+
+Two guards protect the unattended daily. Both are configured through the
+environment or a gitignored `.env` in this repo's root (copy
+`.env.example`); a process environment variable always wins over `.env`.
+The `.env` parser is a tiny stdlib `KEY=VALUE` reader deliberately
+mirrored from `nba-model/nba_model/odds_api.py` rather than imported —
+this repo stands alone on stdlib, with no cross-repo imports. Blank
+lines, `#` comments and malformed lines are ignored; surrounding quotes
+are stripped from values.
+
+**Disk-space guard.** Before doing *any* work — before the model
+dailies, the build, or any git command — `daily.py` checks free space on
+the volume it runs from (`shutil.disk_usage`). Below the threshold
+(default **2 GiB**; override with `MIN_FREE_GB`) it aborts loudly: a
+multi-line `DISK-GUARD ABORT` banner on stderr, a
+`DISK-GUARD ABORT free_gb=… min_free_gb=…` line in
+`logs/automation.log`, and a nonzero exit. Rationale: a full disk
+mid-run can corrupt the git index or silently write truncated payloads;
+refusing to start is the safe failure. At or above the threshold the run
+proceeds and records the figure as `disk_free_gb=…` in the summary line.
+Comparison is `free < threshold`, so exactly-at-threshold proceeds. A
+non-numeric `MIN_FREE_GB` warns and falls back to the default. The guard
+applies to dry runs too — a rehearsal on a full disk is just as unsafe.
+
+**Healthcheck ping (dead-man switch).** If `HEALTHCHECK_URL` is set (env
+or `.env`), the *end* of a fully successful **live** daily issues one
+HTTP GET to it (urllib, 10 s timeout) and records `healthcheck=ok` or
+`healthcheck=failed` in the log line. A failed ping is a warning only —
+the run still exits 0; the monitor's job is to notice silence, not ours
+to crash over it. "Fully successful" means every model repo that ran
+succeeded (or `--skip-models` skipped them cleanly) and the
+publish/build step did not raise. A run with any repo `FAIL`, or a
+`--dry-run` rehearsal, never pings — silence must mean trouble, so a
+degraded or rehearsed run logs `healthcheck=skipped` instead. With no
+URL configured the ping is skipped silently and the line says
+`healthcheck=unset`.
 
 ## Scheduling (the canonical setup)
 
@@ -499,6 +537,7 @@ no venv of its own; the sibling NFL repo's venv is convenient:
 | `tests/test_ats_pricing.py` | priced spreads, partial odds coverage, the odds methodology |
 | `tests/test_revisions.py` | the revision disclosures |
 | `tests/test_daily.py` | the daily cycle, dry runs, the run log, publish idempotency |
+| `tests/test_ops_guards.py` | the disk-space guard, the healthcheck (dead-man switch) ping, `.env` parsing |
 | `tests/test_policy.py` | the prediction horizon: picks filtering, both empty states, out-of-policy exclusions, back-compat |
 | `tests/test_clv.py` | the CLV block, the large-disagreement line, the empty state, the byte-for-byte no-CLV regression, the methodology note's numbers |
 

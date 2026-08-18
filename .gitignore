@@ -4,3 +4,4 @@ __pycache__/
 payloads/*.json
 logs/*
 !logs/.gitkeep
+.env
