@@ -536,3 +536,19 @@ whenever a provider returned one.
   labelled out-of-policy rows are all reviewable in a diff. It is fixture
   data, not live data — the next `daily.py` / `publish.py` run overwrites it
   (including `docs/data/*.json`) with the real payloads.
+
+## Production deployment
+
+The site is built and pushed by **models-vps** (`vps3507025`, user `model`),
+which also hosts the MLB model; schedules are staggered apart. Migrated from
+amazin-vps on 2026-08-17.
+
+| | |
+|---|---|
+| Path | `~/models/predictions-site` |
+| Schedule | `daily.py` at `03:03` **America/Los_Angeles** (host clock is Eastern; `CRON_TZ` pins it) |
+| Interpreter | `~/models/nfl-model/.venv/bin/python` (has `tzdata`, so the Pacific windows use a real tz database) |
+| Logs | `~/models/predictions-site/logs/automation.log` |
+
+The footer of every page names the publishing host, so `from vps3507025`
+is the at-a-glance confirmation that production is the box you think it is.
