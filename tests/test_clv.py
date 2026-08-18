@@ -375,7 +375,86 @@ def test_the_column_disappears_when_no_game_is_clv_graded(tmp_path):
     assert "clv-na" not in nfl
 
 
-# ---------------------------------------------------- (6) site invariants
+# ------------------------------------------------- (6) the methodology note
+
+def method_note(out_dir):
+    text = read(out_dir, "methodology.html")
+    assert 'id="clv-method"' in text, "no CLV note on the methodology page"
+    return prose(text.split('aria-labelledby="clv-method"')[1].split("</section>")[0])
+
+
+def test_the_methodology_note_reports_a_real_signal_in_both_sports(clv_site):
+    note = method_note(clv_site)
+    assert "real directional signal" in note
+    assert "moved toward the model more often than chance" in note
+    # ...and immediately says a free line move is not money
+    assert "free of vig" in note
+
+
+def test_the_nfl_verdict_keeps_its_numbers_and_its_unresolved_sign(clv_site):
+    """The honest numbers, asserted so nobody can quietly soften them: NFL
+    landed on the breakeven line, and which side of it is unknown because the
+    source published no prices."""
+    note = method_note(clv_site)
+    assert "52.43%" in note
+    assert "52.38%" in note
+    assert "the sign of that verdict is unresolved" in note.lower()
+    assert "without prices" in note
+    assert "-105 turns it positive" in note
+    assert "+2.28%" in note
+    assert "-115 turns it negative" in note
+    assert "−1.92%" in note
+    assert "assumption, not a measurement" in note
+
+
+def test_the_nba_verdict_is_stated_as_decisively_negative(clv_site):
+    note = method_note(clv_site)
+    assert "decisively negative" in note
+    assert "−4.89%" in note
+    assert "confidence interval that excludes zero" in note
+
+
+def test_the_note_gives_the_reconciling_reason_with_both_maes(clv_site):
+    """CLV positive and ROI negative is not a contradiction: the opener is
+    simply the better forecast. Both MAEs are named."""
+    note = method_note(clv_site)
+    assert "opening line already forecasts better than the model" in note
+    assert "10.38" in note
+    assert "10.66" in note
+    assert "necessary condition" in note and "not a sufficient one" in note
+
+
+def test_the_note_says_this_is_a_paper_trail_and_not_a_betting_system(clv_site):
+    note = method_note(clv_site)
+    assert "records a forward paper trail with real prices" in note
+    assert "rather than running a betting system" in note
+    assert "Nothing is staked, nothing is recommended" in note
+    assert "not advice to bet anything" in note
+
+
+def test_the_note_never_claims_an_edge(clv_site):
+    note = method_note(clv_site).lower()
+    for claim in ("profitable", "beats the market", "beat the market",
+                  "guaranteed", "edge over the market"):
+        assert claim not in note, f"spin in the CLV note: {claim!r}"
+
+
+def test_the_existing_honest_backtest_framing_is_untouched(clv_site):
+    text = prose(read(clv_site, "methodology.html"))
+    assert "Neither model beats the betting market" in text
+    assert "negative return on investment" in text
+    assert "walk-forward only" in text
+    assert "The honest betting finding" in text
+
+
+def test_the_note_is_present_even_for_a_payload_carrying_no_clv(tmp_path):
+    """It reports a completed study, not today's payload, so it does not
+    come and go with the data."""
+    out = make_site(tmp_path, "nfl_priced.json", "nba_priced.json")
+    assert "52.43%" in method_note(out)
+
+
+# ---------------------------------------------------- (7) site invariants
 
 @pytest.mark.parametrize("page", PAGES)
 def test_disclaimer_and_stamp_survive(clv_site, page):

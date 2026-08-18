@@ -1453,6 +1453,54 @@ def render_backtest_stats(payload) -> str:
     return f'<dl class="stat-grid">\n    {cells}\n  </dl>'
 
 
+#: The methodology page's CLV note.
+#:
+#: Static prose, deliberately: it reports what a completed retrospective study
+#: found, which is a fact about the research and not about today's payload. The
+#: numbers are the study's own and are quoted without softening -- the NFL
+#: verdict is stated as unresolved because it genuinely is, and the NBA verdict
+#: is stated as negative because it genuinely is. ``tests/test_clv.py`` pins
+#: several of these figures so they cannot be quietly improved later.
+CLV_METHOD_SECTION = """
+<section class="sport-section" aria-labelledby="clv-method">
+  <h2 id="clv-method">Closing line value &#8212; what the study found</h2>
+  <p>A separate study asked a narrower question than whether these models can
+  make money: <em>after a pick is made, does the closing line move toward the
+  model?</em> That is closing line value, or CLV. In both sports the answer
+  was <strong>yes &#8212; there is a real directional signal</strong>. The
+  close moved toward the model more often than chance, and the effect grew
+  with how far the model disagreed with the opening number. Line movement is
+  free of vig, though, so a signal there is a statement about the model, not
+  about money.</p>
+  <p><strong>NFL landed essentially on the breakeven line.</strong> Taking the
+  opening number over 1,085 games, the model's side came in at
+  <strong>52.43%</strong> against a breakeven of <strong>52.38%</strong> at an
+  assumed -110 &#8212; five hundredths of a percentage point, on a result whose
+  own error bar is worth about sixty units. And <strong>the sign of that
+  verdict is unresolved</strong>, because the study&#8217;s data source
+  published lines <em>without prices</em>: re-pricing the same record at
+  <strong>-105 turns it positive</strong> (+2.28%) and at <strong>-115 turns
+  it negative</strong> (&#8722;1.92%). The -110 was an assumption, not a
+  measurement, and the entire verdict lives inside it.</p>
+  <p><strong>NBA was decisively negative</strong>: <strong>&#8722;4.89%</strong>
+  return over 5,582 games, with a confidence interval that excludes zero. It
+  lost in every disagreement bucket and in all five seasons. The reconciling
+  reason is plain in the same study&#8217;s numbers &#8212; <strong>the opening
+  line already forecasts better than the model does</strong>, at a margin mean
+  absolute error of <strong>10.38</strong> points against the
+  model&#8217;s <strong>10.66</strong>. So CLV is a necessary condition for a
+  betting edge and not a sufficient one: a model can hold a sliver of
+  information the opener has not yet absorbed and still be the worse forecast
+  overall.</p>
+  <p>Which is why this site <strong>records a forward paper trail with real
+  prices rather than running a betting system</strong>. Each pick is logged
+  with a morning line and price and compared against a closing snapshot, and
+  the track record reports what the line did. Nothing is staked, nothing is
+  recommended, and the units shown elsewhere are a flat one-unit accounting
+  convention for scoring the record &#8212; not advice to bet anything.</p>
+</section>"""
+
+
 def render_horizon_section(payloads: dict) -> str:
     """The "Prediction horizon" section, or "" when no payload states a policy.
 
@@ -1569,7 +1617,8 @@ before kickoff/tip-off and graded after the fact, unedited.</p>
   column, and counted in the note under the P/L table &#8212; rather than being
   assumed into a price it never had. Days with no odds at all simply contribute
   no units.</p>
-</section>{render_horizon_section(payloads)}
+</section>
+{CLV_METHOD_SECTION.strip()}{render_horizon_section(payloads)}
 
 <section class="sport-section" aria-labelledby="eval-method">
   <h2 id="eval-method">Evaluation</h2>
