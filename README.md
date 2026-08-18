@@ -10,6 +10,11 @@ transparency. Not betting advice.** Neither model has a betting edge — both
 sit near 50% against the spread with vig-negative ROI, which is the expected
 honest result against closing lines. See the site's Methodology page.
 
+A **closing-line-value paper trail** is published alongside the record — a
+morning line-and-price snapshot per pick against a closing one. It is a paper
+trade, not a betting system: nothing is staked and nothing is recommended. See
+[Closing line value](#closing-line-value-display-only-and-a-paper-trail).
+
 ## Layout
 
 ```
@@ -250,6 +255,94 @@ the real tz database *was* available (the NFL repo's venv has `tzdata`), so the
 fallback is insurance rather than the normal path — `tests/test_units.py`
 exercises it directly either way.
 
+## Closing line value (display only, and a paper trail)
+
+The model repos are accumulating a CLV paper trail: a **morning** line-and-price
+snapshot logged with each pick, and a **closing** snapshot taken shortly before
+tip-off/kickoff. The track record renders it beside the units, per league.
+
+**This site computes no CLV of its own.** Every figure is read straight from the
+payload — `record.clv` for the summary and a per-game `clv` block for the rows —
+because only the repo that made the pick knows what the two snapshots were.
+`build.py` formats; it does not derive.
+
+**It is a paper trade, not a betting system**, and the block says so on its face
+every time it renders. There is deliberately nothing here that resembles
+hedging, cash-out, alerts or bet sizing, and there never should be.
+
+What the block shows:
+
+* **Mean CLV** in percentage points (`mean_clv_pp`) as the headline, because
+  percentage points are unambiguous, with `mean_clv_cents` beside it *when the
+  payload has it* — a line-only snapshot source has no cents and none are
+  invented.
+* **The directional hit rate** (`hit_rate`) — the share of picks whose close
+  moved toward the model — quoted with its n. The n is `n_graded - no_move`,
+  the moved lines, matching both studies' convention.
+* **`no_move` on its own tile**, never folded into that hit rate: a line that
+  never moved is neither a hit nor a miss, and both studies report it
+  separately for exactly that reason. The count is shown even when it is 0.
+* **Mean line movement** in points (`mean_line_move`).
+* **The bucket table** by disagreement size, straight from `buckets`.
+* **The large-disagreement slice** (`large_disagreement`) on its own clearly
+  labelled line, called out because it is the study's live hypothesis. It is
+  driven purely by that key being present — *never* by a league name, in
+  keeping with the rest of this repo. Ship the key from NBA instead and the
+  line moves to NBA; `tests/test_clv.py` asserts precisely that.
+* **`n_ungraded`**, whenever it is non-zero: picks with only one of the two
+  snapshots are excluded from every figure above and the page says how many
+  were skipped rather than dropping them silently.
+
+Three states, all decided by the payload and none by the league:
+
+| Payload | Renders |
+| --- | --- |
+| no `clv` anywhere | nothing — no heading, no empty grid, no zeros |
+| `clv` present, `n_graded: 0` | *"No CLV data yet — CLV is recorded from the first morning snapshot onward"* |
+| `clv` present, graded picks | the full block above |
+
+The first row is a hard compatibility guarantee, and it is tested the strict
+way: `tests/fixtures/nfl_clv.json` is `nfl_priced.json` **plus CLV keys and
+nothing else**, so a test can strip every `clv` key back out and assert the
+rendered pages are **byte-for-byte identical** to the pre-CLV build.
+
+Per-game rows gain a **Line move** column whenever at least one graded game has
+`clv.graded: true` — the same data-driven rule the ATS and Units columns follow.
+A graded row shows the movement and the book that priced the close, with the
+full `morning → close` pair (line, price, book) in the `title`. A row whose
+snapshots are incomplete shows an em dash with a `title` and a screen-reader
+explanation, exactly as the Units column already handles a game with no odds.
+
+**CLV is not money, so it borrows none of the win/loss palette.** Units are
+green and red; CLV figures are plain ink with an explicit printed sign. A line
+moving your way is information about the model, not a profit, and colouring it
+like a P/L would quietly claim otherwise.
+
+### What the CLV study found, and why the site only paper-trades
+
+The Methodology page carries a short note, and it is **static prose** rather
+than payload-driven: it reports a completed retrospective study, not today's
+data, so it renders regardless of what the payloads contain. In brief —
+
+* there is a **real directional signal in both sports**: the close moves toward
+  the model more often than chance, and more so the more the model disagrees
+  with the opener;
+* **NFL landed essentially on the breakeven line** — 52.43% against a 52.38%
+  breakeven betting the opener at an assumed -110 — and **the sign of that
+  verdict is unresolved**, because the study's source published lines *without
+  prices*: the same record re-priced at -105 is positive (+2.28%) and at -115
+  is negative (-1.92%);
+* **NBA was decisively negative** (-4.89%, CI excluding zero), and the
+  reconciling reason is that **the opening line already forecasts better than
+  the model** (margin MAE 10.38 vs 10.66) — CLV is a necessary condition for a
+  betting edge, not a sufficient one;
+* therefore the site **records a forward paper trail with real prices**; it does
+  not run a betting system. No stakes, no advice.
+
+Several of those figures are pinned by `tests/test_clv.py` so they cannot be
+quietly softened later. The upstream studies are `../nfl-model/clv_study.md`
+and `../nba-model/clv_study.md`.
+
 ## The `docs/data/*.json` contract
 
 Every build also writes the raw payloads to:
@@ -407,6 +500,7 @@ no venv of its own; the sibling NFL repo's venv is convenient:
 | `tests/test_revisions.py` | the revision disclosures |
 | `tests/test_daily.py` | the daily cycle, dry runs, the run log, publish idempotency |
 | `tests/test_policy.py` | the prediction horizon: picks filtering, both empty states, out-of-policy exclusions, back-compat |
+| `tests/test_clv.py` | the CLV block, the large-disagreement line, the empty state, the byte-for-byte no-CLV regression, the methodology note's numbers |
 
 Fixture payloads: `nfl.json` / `nba.json` are v1 (no `settle`), `empty.json` is
 the pre-season state, `nfl_priced.json` is a full v2 NFL slate, and there are
@@ -421,6 +515,15 @@ while leaving the 2-2 straight-up record untouched) and
 `nba_policy_offseason.json` (nothing in window at all, plus one graded game
 out of policy, which is the off-season empty state and the singular wording of
 the exclusion note).
+
+Two more carry CLV, and each is its priced counterpart **plus `clv` keys and
+nothing else** — that is what makes the byte-for-byte no-CLV regression test
+possible. `nfl_clv.json` has priced snapshots (so cents are shown), five graded
+picks including one whose line never moved, two with only a morning snapshot,
+one pending pick with no `clv` key at all, and a `large_disagreement` slice.
+`nba_clv.json` has a line-only snapshot source (no prices, so no cents), three
+graded picks, one incomplete, and `large_disagreement: null` — so a single
+build exercises both halves of every tolerance rule.
 
 ## Payload schema
 
@@ -449,6 +552,45 @@ and per history entry:
 ```jsonc
 "out_of_policy": false     // the settling prediction was made outside policy
 ```
+
+The **CLV keys** are newer still and equally optional. Per history entry:
+
+```jsonc
+"clv": {
+  "morning_line": -3.0 | null, "morning_price": -110 | null,
+  "morning_book": "DraftKings" | null,
+  "close_line": -4.5 | null,   "close_price": -115 | null,
+  "close_book": "Pinnacle" | null,
+  "line_move_toward_model": 1.5 | null,   // points, signed toward the model
+  "clv_pp": 4.5 | null,                   // percentage points
+  "clv_cents": 5.0 | null,                // cents of price
+  "disagreement": 2.4 | null,             // |model - morning line|, points
+  "graded": true                          // both snapshots present
+}
+```
+
+and on `record`:
+
+```jsonc
+"clv": {
+  "n_graded": 5, "n_ungraded": 2,
+  "hit_rate": 0.5 | null,                 // a fraction, like su_acc
+  "no_move": 1,
+  "mean_line_move": 0.4 | null,           // points
+  "mean_clv_pp": 1.2 | null,
+  "mean_clv_cents": 0.2 | null,
+  "buckets": [{"label": "2+", "n": 2, "hit_rate": 1.0,
+               "mean_line_move": 1.75, "mean_clv_pp": 5.25}],
+  "large_disagreement": {"label": "|d|>2", "n": 2, "hit_rate": 1.0,
+                         "mean_line_move": 1.75} | null
+}
+```
+
+Rates are **fractions** (`0.5` = 50%), matching `su_acc` and `record.ats.pct`
+elsewhere in the payload. `mean_clv_pp` and `clv_cents` are already in their
+units and are printed as given. Every one of these keys may be absent, null or
+non-numeric: a missing figure renders an em dash and a missing block renders
+nothing at all. A `clv` that is not an object is ignored outright.
 
 `min_days` / `max_days` may arrive as `3` or `3.0`; both render as "3". A
 missing `out_of_policy` is `false`, so every pre-policy payload stays fully
@@ -530,12 +672,31 @@ whenever a provider returned one.
   greyed out to illegibility, or coloured like a loss. The badge marks a
   *scope*, not a bad result, so it deliberately borrows none of the win/loss
   palette.
+* The CLV hit rate is quoted against the **moved** lines (`n_graded -
+  no_move`), not against every graded pick, because that is the denominator
+  both studies use and because a line that never moved is not evidence either
+  way. The site derives that one subtraction and nothing else; if the payload's
+  two counts disagree with each other it falls back to quoting `n_graded`
+  rather than printing a denominator it cannot justify.
+* The large-disagreement slice gets its own line rather than a row in the
+  bucket table, because it is a *different claim* — the open hypothesis, not
+  another bucket — and burying it in the table would read as one bucket among
+  five.
+* CLV figures deliberately use no colour. Units are green and red; a line
+  moving toward the model is information, not profit, and giving it the P/L
+  palette would imply money that this site explicitly does not claim.
+* The methodology CLV note is static prose, not payload-driven. It reports a
+  finished study, so it should not appear and disappear as payloads change —
+  and keeping it static is what lets the no-CLV regression test assert every
+  page byte-for-byte.
 * `docs/` in this commit is a **preview built from `tests/fixtures/`**
-  (`nfl_policy.json` + `nba_policy_offseason.json`, clock pinned to
-  2026-10-24) so the horizon filtering, the off-season empty state and the
-  labelled out-of-policy rows are all reviewable in a diff. It is fixture
-  data, not live data — the next `daily.py` / `publish.py` run overwrites it
-  (including `docs/data/*.json`) with the real payloads.
+  (`nfl_clv.json` + `nba_clv.json`, clock pinned to 2026-10-24) so the CLV
+  block, the large-disagreement line, the `Line move` column and the em-dashed
+  ungraded rows are all reviewable in a diff. It is fixture data, not live data
+  — the next `daily.py` / `publish.py` run overwrites it (including
+  `docs/data/*.json`) with the real payloads. The previous preview was built
+  from the horizon-policy fixtures; regenerate that pairing if you need to
+  review the out-of-policy rows again.
 
 ## Production deployment
 

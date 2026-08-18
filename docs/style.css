@@ -494,6 +494,128 @@ table.history td.pl-cell {
   color: var(--ink-muted);
 }
 
+/* Closing line value.
+
+   CLV is a paper trail, not money, so nothing here borrows the win/loss
+   palette: a line that moved your way is information. Direction is carried
+   by the printed sign instead, and every colour is a theme variable so the
+   block is as legible in dark mode as the tables above it. */
+
+.clv {
+  margin: 0.5rem 0 1.5rem;
+}
+
+.clv h3 {
+  font-size: 1rem;
+  margin: 0 0 0.2rem;
+}
+
+.clv-note {
+  margin: 0 0 0.6rem;
+  font-size: 0.85rem;
+  color: var(--ink-secondary);
+}
+
+.clv-empty {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--ink-secondary);
+}
+
+.clv-grid {
+  margin: 0 0 0.75rem;
+}
+
+.clv-grid dd {
+  font-variant-numeric: tabular-nums;
+}
+
+table.clv-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.85rem;
+  background: var(--surface);
+}
+
+table.clv-table th,
+table.clv-table td {
+  text-align: right;
+  padding: 0.45rem 0.7rem;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+table.clv-table thead th,
+table.clv-table tbody th {
+  text-align: left;
+}
+
+table.clv-table thead th {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+  font-weight: 600;
+}
+
+table.clv-table thead th:not(:first-child) {
+  text-align: right;
+}
+
+table.clv-table tbody th {
+  font-weight: 600;
+  color: var(--ink-secondary);
+}
+
+table.clv-table tbody tr:last-child th,
+table.clv-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* The large-disagreement slice: called out because it is the open question,
+   not because it is a recommendation. */
+.clv-large {
+  margin: 0.75rem 0 0;
+  padding: 0.5rem 0.75rem;
+  border-left: 3px solid var(--border);
+  font-size: 0.85rem;
+  color: var(--ink-secondary);
+}
+
+.clv-large-why {
+  display: block;
+  color: var(--ink-muted);
+}
+
+.clv-ungraded {
+  margin-top: 0.6rem;
+}
+
+.clv-move {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.clv-book {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--ink-muted);
+}
+
+/* A game with only one snapshot: an em dash, same treatment as a game with
+   no odds, and never a 0.00 that would read as "the line held". */
+table.history td.clv-na {
+  color: var(--ink-muted);
+  cursor: help;
+}
+
+table.history td.clv-cell {
+  text-align: right;
+  cursor: help;
+}
+
 /* Revision disclosures */
 
 td.matchup-cell {
