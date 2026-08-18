@@ -153,6 +153,63 @@ OUT_OF_POLICY_NOTE_PLAIN = (
 OUT_OF_POLICY_UNITS_TITLE = "excluded from P/L &#8212; predicted outside the policy window"
 
 
+# ------------------------------------------------------ closing line value
+#
+# CLV is **display only** here. Every figure below is read straight from the
+# payload's ``record.clv`` block and its per-game ``clv`` blocks; this repo
+# computes no CLV arithmetic of its own, because only the repo that made the
+# pick knows what the morning and closing snapshots actually were.
+#
+# It is also a **paper trail, not a betting system** — see CLV_PAPER_NOTE.
+# Nothing here suggests a stake, a hedge or an action.
+
+CLV_HEADING = "Closing line value"
+
+#: Said on the track record every time CLV is shown, so the block can never be
+#: read as a tout sheet: the site records what the line did, and stakes nothing.
+CLV_PAPER_NOTE = (
+    "A paper trail, not a betting system: each pick is logged with a morning "
+    "line and price, then compared with a closing snapshot. Nothing is staked "
+    "and no bet is placed."
+)
+
+#: Before any pick has both snapshots. Calm, and explicitly not a zero.
+CLV_EMPTY_NOTE = (
+    "No CLV data yet &#8212; CLV is recorded from the first morning snapshot "
+    "onward."
+)
+
+#: Picks with only one of the two snapshots. They are excluded from every
+#: figure above, and the page says how many rather than dropping them quietly.
+CLV_UNGRADED_NOTE = (
+    "{n} {picks} {have} only one of the two snapshots and {are} not counted "
+    "above."
+)
+
+CLV_HIT_LABEL = "Closed toward the model"
+
+CLV_NO_MOVE_LABEL = "No line move"
+
+#: The no-move count is reported beside the hit rate, never folded into it: a
+#: line that never moved is neither a hit nor a miss.
+CLV_NO_MOVE_SUB = "not counted in the hit rate"
+
+CLV_LARGE_LABEL = "Large disagreement"
+
+#: Why that slice gets its own line: it is the one the study left open.
+CLV_LARGE_WHY = (
+    "This slice is the study&#8217;s live hypothesis &#8212; the picks where "
+    "the model disagreed most with the morning line."
+)
+
+#: Per-row CLV cell for a game whose snapshots are incomplete.
+CLV_UNGRADED_CELL_TITLE = (
+    "no complete morning and closing snapshot &#8212; ungraded for CLV"
+)
+
+CLV_UNGRADED_CELL_LABEL = "ungraded for CLV, snapshots incomplete"
+
+
 # ---------------------------------------------------------------- formatting
 
 def esc(value) -> str:
@@ -245,6 +302,56 @@ def fmt_price(price) -> str:
     if price is None:
         return EMDASH
     return f"{int(price):+d}"
+
+
+def fmt_signed(value, unit: str, digits: int = 2) -> str:
+    """A signed measurement with its unit, or an em dash.
+
+    ``+1.75 pts`` / ``-3.00 pp`` / ``0.00 pts``. The sign is always printed
+    (except on a value that rounds to zero, which has no direction) because
+    the direction *is* the finding: colour is never the only cue, and CLV
+    figures deliberately borrow none of the win/loss palette — a line moving
+    your way is information, not money.
+
+    A missing or non-numeric value is an em dash rather than a printed
+    ``None``: the payload may legitimately have no figure yet.
+    """
+    if value is None or isinstance(value, bool):
+        return EMDASH
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return EMDASH
+    if number != number or number in (float("inf"), float("-inf")):
+        return EMDASH
+    if abs(number) < 0.5 * 10 ** -digits:
+        return f"{0.0:.{digits}f} {unit}"
+    return f"{number:+.{digits}f} {unit}"
+
+
+def fmt_points(value, digits: int = 2) -> str:
+    """Line movement in points: ``+1.50 pts``."""
+    return fmt_signed(value, "pts", digits)
+
+
+def fmt_pp(value, digits: int = 2) -> str:
+    """CLV in percentage points: ``+1.20 pp``. Unambiguous, so it leads."""
+    return fmt_signed(value, "pp", digits)
+
+
+def fmt_cents(value, digits: int = 1) -> str:
+    """CLV in cents of price: ``+0.2 cents``."""
+    return fmt_signed(value, "cents", digits)
+
+
+def count_of(value):
+    """A payload integer, or ``None`` when it is missing or not a number."""
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
 
 
 # ------------------------------------------------------------------- loading
@@ -895,6 +1002,245 @@ def render_record_summary(record: dict, sport: str, pnl=None) -> str:
     return f'<dl class="stat-grid">\n    {cells}\n  </dl>'
 
 
+# ------------------------------------------------------ closing line value
+
+def clv_summary(record):
+    """The payload's ``record.clv`` block, or ``None`` when it has none.
+
+    A payload with no CLV anywhere renders exactly as it did before CLV
+    existed: no heading, no empty grid, no zeros. "Absent" and "zero" are
+    different statements and only the payload gets to make either.
+    """
+    clv = (record or {}).get("clv")
+    return clv if isinstance(clv, dict) else None
+
+
+def game_clv(game):
+    """One game's ``clv`` block, or ``None``."""
+    clv = (game or {}).get("clv")
+    return clv if isinstance(clv, dict) else None
+
+
+def is_clv_graded(game) -> bool:
+    """True when this game has both snapshots and a movement to report."""
+    return bool((game_clv(game) or {}).get("graded"))
+
+
+def _stat(name: str, value: str, sub: str = "") -> str:
+    sub_html = f' <span class="stat-sub">{sub}</span>' if sub else ""
+    return f'<div class="stat"><dt>{name}</dt><dd>{value}{sub_html}</dd></div>'
+
+
+def _plural(n: int, word: str) -> str:
+    return f"{n} {word}" if n == 1 else f"{n} {word}s"
+
+
+def clv_moved_count(clv) -> int | None:
+    """How many graded picks actually saw the line move, or ``None``.
+
+    ``n_graded`` minus ``no_move``: the denominator the hit rate is quoted
+    against in both studies, where a line that never moved is excluded rather
+    than scored as a miss. Returns ``None`` unless the payload supplies both
+    counts and they are consistent, so the page can fall back to quoting the
+    graded n instead of inventing a denominator.
+    """
+    n_graded = count_of((clv or {}).get("n_graded"))
+    no_move = count_of((clv or {}).get("no_move"))
+    if n_graded is None or no_move is None:
+        return None
+    if no_move < 0 or no_move > n_graded:
+        return None
+    return n_graded - no_move
+
+
+def render_clv_buckets(buckets, label: str) -> str:
+    """The by-disagreement bucket table, or "" when the payload has none."""
+    rows = [b for b in (buckets or []) if isinstance(b, dict)]
+    if not rows:
+        return ""
+    body = "\n      ".join(
+        f'<tr><th scope="row">{esc(b.get("label") or "&#8212;")}</th>'
+        f'<td>{count_of(b.get("n")) if count_of(b.get("n")) is not None else EMDASH}</td>'
+        f'<td>{fmt_pct(b.get("hit_rate"))}</td>'
+        f'<td>{fmt_points(b.get("mean_line_move"))}</td>'
+        f'<td>{fmt_pp(b.get("mean_clv_pp"))}</td></tr>'
+        for b in rows
+    )
+    return f"""<div class="table-scroll">
+    <table class="clv-table">
+      <caption class="visually-hidden">{esc(label)} closing line value grouped
+      by how far the model disagreed with the morning line, in points.</caption>
+      <thead>
+        <tr><th scope="col">Disagreement</th><th scope="col">Picks</th><th scope="col">Closed toward model</th><th scope="col">Mean line move</th><th scope="col">Mean CLV</th></tr>
+      </thead>
+      <tbody>
+      {body}
+      </tbody>
+    </table>
+  </div>"""
+
+
+def render_clv_large(large) -> str:
+    """The large-disagreement slice on its own line, or "".
+
+    Rendered wherever the payload supplies it and nowhere else. It is never
+    keyed on a league name: the slice is the study's live hypothesis, and the
+    league that happens to be testing it is the one that ships the data.
+    """
+    if not isinstance(large, dict):
+        return ""
+    n = count_of(large.get("n"))
+    label = large.get("label")
+    head = CLV_LARGE_LABEL + (f" ({esc(label)})" if label else "")
+    bits = []
+    if n is not None:
+        bits.append(_plural(n, "pick"))
+    bits.append(f"closed toward the model {fmt_pct(large.get('hit_rate'))}")
+    bits.append(f"mean line move {fmt_points(large.get('mean_line_move'))}")
+    return (
+        f'<p class="clv-large"><strong>{head}:</strong> '
+        + ", ".join(bits)
+        + f'. <span class="clv-large-why">{CLV_LARGE_WHY}</span></p>'
+    )
+
+
+def render_clv(record, sport: str, label: str) -> str:
+    """The CLV block that sits beside the units on the track record, or "".
+
+    Three states, all decided by the payload and never by the league:
+
+    * no ``clv`` block at all -- nothing is rendered, at all;
+    * ``n_graded: 0`` -- a calm "no CLV data yet" sentence, never a row of
+      zeros pretending to be measurements;
+    * graded picks -- the mean CLV, the directional hit rate with its n, the
+      no-move count kept separate from that hit rate, the mean line movement,
+      the bucket table, and the large-disagreement slice when supplied.
+
+    ``n_ungraded`` is always disclosed when non-zero: a pick with only one
+    snapshot is skipped, and the reader is told how many were skipped rather
+    than left to assume the figures cover everything.
+    """
+    clv = clv_summary(record)
+    if clv is None:
+        return ""
+
+    head = (
+        f'<h3 id="{esc(sport)}-clv">{CLV_HEADING}</h3>\n'
+        f'  <p class="clv-note">{CLV_PAPER_NOTE}</p>'
+    )
+
+    ungraded = count_of(clv.get("n_ungraded")) or 0
+    ungraded_note = ""
+    if ungraded > 0:
+        ungraded_note = '\n  <p class="pl-note clv-ungraded">' + CLV_UNGRADED_NOTE.format(
+            n=ungraded,
+            picks="pick" if ungraded == 1 else "picks",
+            have="has" if ungraded == 1 else "have",
+            are="is" if ungraded == 1 else "are",
+        ) + "</p>"
+
+    n_graded = count_of(clv.get("n_graded")) or 0
+    if n_graded <= 0:
+        return f"""<section class="clv" aria-labelledby="{esc(sport)}-clv">
+  {head}
+  <p class="clv-empty">{CLV_EMPTY_NOTE}</p>{ungraded_note}
+</section>"""
+
+    moved = clv_moved_count(clv)
+    if moved is None:
+        hit_sub = f"n = {_plural(n_graded, 'graded pick')}"
+    else:
+        hit_sub = f"n = {_plural(moved, 'line')} that moved"
+
+    no_move = count_of(clv.get("no_move"))
+    cents = clv.get("mean_clv_cents")
+    stats = [
+        _stat(
+            "Mean CLV",
+            fmt_pp(clv.get("mean_clv_pp")),
+            fmt_cents(cents) if cents is not None else "",
+        ),
+        _stat(CLV_HIT_LABEL, fmt_pct(clv.get("hit_rate")), hit_sub),
+        _stat(
+            CLV_NO_MOVE_LABEL,
+            str(no_move) if no_move is not None else EMDASH,
+            CLV_NO_MOVE_SUB,
+        ),
+        _stat("Mean line move", fmt_points(clv.get("mean_line_move"))),
+    ]
+    grid = '<dl class="stat-grid clv-grid">\n    ' + "\n    ".join(stats) + "\n  </dl>"
+
+    parts = [grid]
+    buckets = render_clv_buckets(clv.get("buckets"), label)
+    if buckets:
+        parts.append(buckets)
+    large = render_clv_large(clv.get("large_disagreement"))
+    if large:
+        parts.append(large)
+
+    body = "\n  ".join(parts)
+    return f"""<section class="clv" aria-labelledby="{esc(sport)}-clv">
+  {head}
+  {body}{ungraded_note}
+</section>"""
+
+
+def clv_snapshot(clv, prefix: str, label: str) -> str:
+    """One snapshot as a phrase: ``morning -3.0 at -110 (DraftKings)``."""
+    line = clv.get(f"{prefix}_line")
+    price = clv.get(f"{prefix}_price")
+    book = clv.get(f"{prefix}_book")
+    if line is None and price is None and not book:
+        return ""
+    bits = [label]
+    if line is not None:
+        bits.append(f"{float(line):+.1f}")
+    if price is not None:
+        bits.append(f"at {fmt_price(price)}")
+    if book:
+        bits.append(f"({esc(book)})")
+    return " ".join(bits)
+
+
+def clv_cell_title(clv) -> str:
+    """The hover/`title` detail behind a per-game CLV figure."""
+    snaps = [
+        s
+        for s in (
+            clv_snapshot(clv, "morning", "morning"),
+            clv_snapshot(clv, "close", "close"),
+        )
+        if s
+    ]
+    return " &#8594; ".join(snaps)
+
+
+def _row_clv_cell(game: dict) -> str:
+    """The per-game CLV cell: what the line did, and who priced the close.
+
+    A game whose snapshots are incomplete gets an em dash with a spoken
+    explanation, exactly as the units column does for a game with no odds --
+    never a 0.00 that would read as "the line did not move".
+    """
+    clv = game_clv(game)
+    if not clv or not clv.get("graded"):
+        return (
+            f'<td class="pl-cell clv-na" title="{CLV_UNGRADED_CELL_TITLE}">'
+            f'<span aria-hidden="true">{EMDASH}</span>'
+            f'<span class="visually-hidden">{CLV_UNGRADED_CELL_LABEL}</span></td>'
+        )
+    book = clv.get("close_book") or clv.get("morning_book")
+    book_html = f'<span class="clv-book">{esc(book)}</span>' if book else ""
+    title = clv_cell_title(clv)
+    title_attr = f' title="{title}"' if title else ""
+    return (
+        f'<td class="pl-cell clv-cell"{title_attr}>'
+        f'<span class="clv-move">'
+        f'{fmt_points(clv.get("line_move_toward_model"), 1)}</span>'
+        f"{book_html}</td>"
+    )
+
+
 def out_of_policy_explanation(lo, hi) -> str:
     """Why an out-of-policy row carries no units, in one screen-reader line."""
     if lo is None:
@@ -951,8 +1297,10 @@ def render_history_table(history: list, sport: str, bounds=(None, None)) -> str:
         return ""
     show_ats = any(g.get("ats_result") for g in graded)
     show_units = any(units.is_priced(g) for g in graded)
+    show_clv = any(is_clv_graded(g) for g in graded)
     ats_head = "<th scope=\"col\">ATS</th>" if show_ats else ""
     units_head = '<th scope="col">Units</th>' if show_units else ""
+    clv_head = '<th scope="col">Line move</th>' if show_clv else ""
     rows = []
     for g in graded:
         matchup = f"{g.get('away', '?')} @ {g.get('home', '?')}"
@@ -971,6 +1319,7 @@ def render_history_table(history: list, sport: str, bounds=(None, None)) -> str:
             ats_txt = ATS_LABEL.get(g.get("ats_result"), "&#8212;")
             ats_cell = f"<td>{ats_txt}</td>"
         units_cell = _row_units_cell(g, explain) if show_units else ""
+        clv_cell = _row_clv_cell(g) if show_clv else ""
         revisions = render_revisions(g)
         badge = ""
         row_open = "<tr>"
@@ -991,13 +1340,14 @@ def render_history_table(history: list, sport: str, bounds=(None, None)) -> str:
             f"<td>{score}</td>"
             f"{ats_cell}"
             f"{units_cell}"
+            f"{clv_cell}"
             "</tr>"
         )
     body = "\n      ".join(rows)
     return f"""<div class="table-scroll">
   <table class="history">
     <thead>
-      <tr><th scope="col">Date</th><th scope="col">Matchup</th><th scope="col">Pick</th><th scope="col">Result</th><th scope="col">Score</th>{ats_head}{units_head}</tr>
+      <tr><th scope="col">Date</th><th scope="col">Matchup</th><th scope="col">Pick</th><th scope="col">Result</th><th scope="col">Score</th>{ats_head}{units_head}{clv_head}</tr>
     </thead>
     <tbody>
       {body}
@@ -1054,6 +1404,9 @@ def render_track_record(payloads: dict) -> str:
                 history = payload.get("history") or []
                 pnl = units.summarize(history, "all")
                 parts = [render_record_summary(record, sport, pnl)]
+                clv = render_clv(record, sport, label)
+                if clv:
+                    parts.append(clv)
                 chart = running_chart_svg(record.get("running") or [], label)
                 if chart:
                     parts.append(chart)
