@@ -7,8 +7,144 @@
     "seasons": "2018-2025",
     "su_acc": 0.6715
   },
-  "generated_at": "2026-09-14T10:03:18.451049+00:00",
+  "generated_at": "2026-09-15T10:03:16.432477+00:00",
   "history": [
+    {
+      "ats_result": "win",
+      "away": "DEN",
+      "away_score": 10.0,
+      "clv": {
+        "close_book": "prophetx",
+        "close_line": 1.5,
+        "close_price": -104,
+        "clv_cents": -34.0,
+        "clv_pp": -7.0028,
+        "disagreement": 4.5,
+        "graded": true,
+        "line_move_toward_model": 3.0,
+        "morning_book": "novig",
+        "morning_line": -1.5,
+        "morning_price": -138
+      },
+      "date": "2026-09-14",
+      "game_id": "2026_01_DEN_KC",
+      "home": "KC",
+      "home_score": 31.0,
+      "out_of_policy": false,
+      "pick": "KC",
+      "pick_prob": 0.578,
+      "pred_away_score": 19.6,
+      "pred_home_score": 22.6,
+      "revisions": [
+        {
+          "logged_at": "2026-08-17T18:15:16.357113+00:00",
+          "ml_price": null,
+          "pick": "KC",
+          "pick_prob": 0.559,
+          "post_kickoff": false,
+          "pred_margin": 2.8,
+          "spread_line": 3.0
+        },
+        {
+          "logged_at": "2026-08-17T20:14:26.214763+00:00",
+          "ml_price": -148,
+          "pick": "KC",
+          "pick_prob": 0.594,
+          "post_kickoff": false,
+          "pred_margin": 3.3,
+          "spread_line": 3.0
+        },
+        {
+          "logged_at": "2026-09-08T01:07:11.458226+00:00",
+          "ml_price": -142,
+          "pick": "KC",
+          "pick_prob": 0.591,
+          "post_kickoff": false,
+          "pred_margin": 3.5,
+          "spread_line": 3.0
+        },
+        {
+          "logged_at": "2026-09-08T10:03:14.285754+00:00",
+          "ml_price": -148,
+          "pick": "KC",
+          "pick_prob": 0.599,
+          "post_kickoff": false,
+          "pred_margin": 3.5,
+          "spread_line": 3.0
+        },
+        {
+          "logged_at": "2026-09-09T10:03:09.451266+00:00",
+          "ml_price": -155,
+          "pick": "KC",
+          "pick_prob": 0.61,
+          "post_kickoff": false,
+          "pred_margin": 3.0,
+          "spread_line": 2.5
+        },
+        {
+          "logged_at": "2026-09-10T10:03:10.493934+00:00",
+          "ml_price": -155,
+          "pick": "KC",
+          "pick_prob": 0.617,
+          "post_kickoff": false,
+          "pred_margin": 3.5,
+          "spread_line": 3.0
+        },
+        {
+          "logged_at": "2026-09-11T10:03:15.640818+00:00",
+          "ml_price": -148,
+          "pick": "KC",
+          "pick_prob": 0.611,
+          "post_kickoff": false,
+          "pred_margin": 3.0,
+          "spread_line": 2.5
+        },
+        {
+          "logged_at": "2026-09-13T10:03:14.200712+00:00",
+          "ml_price": -135,
+          "pick": "KC",
+          "pick_prob": 0.591,
+          "post_kickoff": false,
+          "pred_margin": 3.0,
+          "spread_line": 2.5
+        },
+        {
+          "logged_at": "2026-09-14T10:03:18.432557+00:00",
+          "ml_price": -135,
+          "pick": "KC",
+          "pick_prob": 0.578,
+          "post_kickoff": false,
+          "pred_margin": 3.0,
+          "spread_line": 2.5
+        },
+        {
+          "logged_at": "2026-09-14T15:02:00.738841+00:00",
+          "ml_price": -122,
+          "pick": "KC",
+          "pick_prob": 0.578,
+          "post_kickoff": false,
+          "pred_margin": 3.0,
+          "spread_line": -1.5
+        },
+        {
+          "logged_at": "2026-09-14T15:07:14.957623+00:00",
+          "ml_price": -135,
+          "pick": "KC",
+          "pick_prob": 0.578,
+          "post_kickoff": false,
+          "pred_margin": 3.0,
+          "spread_line": 2.5
+        }
+      ],
+      "settle": {
+        "ml_price": -135,
+        "ml_result": "win",
+        "spread_line": 2.5,
+        "spread_price": -138
+      },
+      "su_correct": true,
+      "tier": "Toss-up"
+    },
     {
       "ats_result": "win",
       "away": "ARI",
@@ -1680,10 +1816,10 @@
     "ats": {
       "l": 6,
       "p": 1,
-      "pct": 0.5714,
-      "w": 8
+      "pct": 0.6,
+      "w": 9
     },
-    "brier": 0.2283,
+    "brier": 0.2252,
     "clv": {
       "buckets": [
         {
@@ -1715,28 +1851,28 @@
           "n": 1
         },
         {
-          "hit_rate": 0.75,
+          "hit_rate": 0.8,
           "label": "3+",
-          "mean_clv_pp": -9.691,
-          "mean_line_move": 3.5,
-          "n": 4
+          "mean_clv_pp": -9.153,
+          "mean_line_move": 3.4,
+          "n": 5
         }
       ],
-      "hit_rate": 0.4444,
+      "hit_rate": 0.5,
       "large_disagreement": {
-        "hit_rate": 0.75,
+        "hit_rate": 0.8,
         "label": "|d|>2",
-        "mean_line_move": 2.8,
-        "n": 5
+        "mean_line_move": 2.833,
+        "n": 6
       },
-      "mean_clv_cents": -12.86,
-      "mean_clv_pp": -1.79,
-      "mean_line_move": 0.75,
-      "n_graded": 14,
+      "mean_clv_cents": -14.27,
+      "mean_clv_pp": -2.138,
+      "mean_line_move": 0.9,
+      "n_graded": 15,
       "n_ungraded": 1,
       "no_move": 5
     },
-    "graded": 15,
+    "graded": 16,
     "pending": 16,
     "running": [
       {
@@ -1753,141 +1889,40 @@
         "date": "2026-09-13",
         "graded": 15,
         "su_acc": 0.7333
+      },
+      {
+        "date": "2026-09-14",
+        "graded": 16,
+        "su_acc": 0.75
       }
     ],
-    "su_acc": 0.7333,
+    "su_acc": 0.75,
     "su_losses": 4,
-    "su_wins": 11
+    "su_wins": 12
   },
   "sport": "nfl",
   "upcoming": [
-    {
-      "away": "DEN",
-      "date": "2026-09-14",
-      "datetime_utc": "2026-09-15T00:15:00+00:00",
-      "game_id": "2026_01_DEN_KC",
-      "home": "KC",
-      "home_win_prob": 0.578,
-      "horizon_days": 0.59,
-      "in_window": true,
-      "logged_at": "2026-09-14T10:03:18.432557+00:00",
-      "market_line": "KC -2.5",
-      "market_total": 43.5,
-      "ml_price": -135,
-      "model_line": "KC -3.0",
-      "out_of_policy": false,
-      "pick": "KC",
-      "pick_prob": 0.578,
-      "pred_away_score": 19.6,
-      "pred_home_score": 22.6,
-      "pred_margin": 3.0,
-      "pred_total": 42.3,
-      "revisions": [
-        {
-          "logged_at": "2026-08-17T18:15:16.357113+00:00",
-          "ml_price": null,
-          "pick": "KC",
-          "pick_prob": 0.559,
-          "post_kickoff": false,
-          "pred_margin": 2.8,
-          "spread_line": 3.0
-        },
-        {
-          "logged_at": "2026-08-17T20:14:26.214763+00:00",
-          "ml_price": -148,
-          "pick": "KC",
-          "pick_prob": 0.594,
-          "post_kickoff": false,
-          "pred_margin": 3.3,
-          "spread_line": 3.0
-        },
-        {
-          "logged_at": "2026-09-08T01:07:11.458226+00:00",
-          "ml_price": -142,
-          "pick": "KC",
-          "pick_prob": 0.591,
-          "post_kickoff": false,
-          "pred_margin": 3.5,
-          "spread_line": 3.0
-        },
-        {
-          "logged_at": "2026-09-08T10:03:14.285754+00:00",
-          "ml_price": -148,
-          "pick": "KC",
-          "pick_prob": 0.599,
-          "post_kickoff": false,
-          "pred_margin": 3.5,
-          "spread_line": 3.0
-        },
-        {
-          "logged_at": "2026-09-09T10:03:09.451266+00:00",
-          "ml_price": -155,
-          "pick": "KC",
-          "pick_prob": 0.61,
-          "post_kickoff": false,
-          "pred_margin": 3.0,
-          "spread_line": 2.5
-        },
-        {
-          "logged_at": "2026-09-10T10:03:10.493934+00:00",
-          "ml_price": -155,
-          "pick": "KC",
-          "pick_prob": 0.617,
-          "post_kickoff": false,
-          "pred_margin": 3.5,
-          "spread_line": 3.0
-        },
-        {
-          "logged_at": "2026-09-11T10:03:15.640818+00:00",
-          "ml_price": -148,
-          "pick": "KC",
-          "pick_prob": 0.611,
-          "post_kickoff": false,
-          "pred_margin": 3.0,
-          "spread_line": 2.5
-        },
-        {
-          "logged_at": "2026-09-13T10:03:14.200712+00:00",
-          "ml_price": -135,
-          "pick": "KC",
-          "pick_prob": 0.591,
-          "post_kickoff": false,
-          "pred_margin": 3.0,
-          "spread_line": 2.5
-        },
-        {
-          "logged_at": "2026-09-14T10:03:18.432557+00:00",
-          "ml_price": -135,
-          "pick": "KC",
-          "pick_prob": 0.578,
-          "post_kickoff": false,
-          "pred_margin": 3.0,
-          "spread_line": 2.5
-        }
-      ],
-      "tier": "Toss-up"
-    },
     {
       "away": "DET",
       "date": "2026-09-17",
       "datetime_utc": "2026-09-18T00:15:00+00:00",
       "game_id": "2026_02_DET_BUF",
       "home": "BUF",
-      "home_win_prob": 0.574,
-      "horizon_days": 3.59,
+      "home_win_prob": 0.603,
+      "horizon_days": 2.59,
       "in_window": true,
-      "logged_at": "2026-09-14T10:03:18.432557+00:00",
-      "market_line": "BUF -3.5",
+      "logged_at": "2026-09-15T10:03:16.416771+00:00",
+      "market_line": "BUF -4.5",
       "market_total": 53.5,
-      "ml_price": -180,
-      "model_line": "BUF -3.9",
+      "ml_price": -205,
+      "model_line": "BUF -5.0",
       "out_of_policy": false,
       "pick": "BUF",
-      "pick_prob": 0.574,
-      "pred_away_score": 24.7,
-      "pred_home_score": 28.7,
-      "pred_margin": 3.9,
-      "pred_total": 53.4,
+      "pick_prob": 0.603,
+      "pred_away_score": 24.4,
+      "pred_home_score": 29.4,
+      "pred_margin": 5.0,
+      "pred_total": 53.8,
       "revisions": [
         {
           "logged_at": "2026-09-11T01:07:05.413946+00:00",
@@ -1924,9 +1959,18 @@
           "post_kickoff": false,
           "pred_margin": 3.9,
           "spread_line": 3.5
+        },
+        {
+          "logged_at": "2026-09-15T10:03:16.416771+00:00",
+          "ml_price": -205,
+          "pick": "BUF",
+          "pick_prob": 0.603,
+          "post_kickoff": false,
+          "pred_margin": 5.0,
+          "spread_line": 4.5
         }
       ],
-      "tier": "Toss-up"
+      "tier": "Lean"
     },
     {
       "away": "CAR",
@@ -1934,21 +1978,21 @@
       "datetime_utc": "2026-09-20T17:00:00+00:00",
       "game_id": "2026_02_CAR_ATL",
       "home": "ATL",
-      "home_win_prob": 0.493,
-      "horizon_days": 6.29,
+      "home_win_prob": 0.46,
+      "horizon_days": 5.29,
       "in_window": true,
-      "logged_at": "2026-09-14T10:03:18.432557+00:00",
-      "market_line": "ATL -1.5",
-      "market_total": 44.5,
-      "ml_price": -108,
-      "model_line": "ATL -2.1",
+      "logged_at": "2026-09-15T10:03:16.416771+00:00",
+      "market_line": "CAR -1.5",
+      "market_total": 43.5,
+      "ml_price": -125,
+      "model_line": "CAR -0.8",
       "out_of_policy": false,
       "pick": "CAR",
-      "pick_prob": 0.507,
-      "pred_away_score": 21.0,
-      "pred_home_score": 23.2,
-      "pred_margin": 2.1,
-      "pred_total": 44.2,
+      "pick_prob": 0.54,
+      "pred_away_score": 22.0,
+      "pred_home_score": 21.2,
+      "pred_margin": -0.8,
+      "pred_total": 43.2,
       "revisions": [
         {
           "logged_at": "2026-09-13T17:07:06.208837+00:00",
@@ -1967,6 +2011,15 @@
           "post_kickoff": false,
           "pred_margin": 2.1,
           "spread_line": 1.5
+        },
+        {
+          "logged_at": "2026-09-15T10:03:16.416771+00:00",
+          "ml_price": -125,
+          "pick": "CAR",
+          "pick_prob": 0.54,
+          "post_kickoff": false,
+          "pred_margin": -0.8,
+          "spread_line": -1.5
         }
       ],
       "tier": "Toss-up"
@@ -1977,21 +2030,21 @@
       "datetime_utc": "2026-09-20T17:00:00+00:00",
       "game_id": "2026_02_CIN_HOU",
       "home": "HOU",
-      "home_win_prob": 0.498,
-      "horizon_days": 6.29,
+      "home_win_prob": 0.515,
+      "horizon_days": 5.29,
       "in_window": true,
-      "logged_at": "2026-09-14T10:03:18.432557+00:00",
+      "logged_at": "2026-09-15T10:03:16.416771+00:00",
       "market_line": "HOU -3.0",
-      "market_total": 47.5,
-      "ml_price": 124,
+      "market_total": 46.5,
+      "ml_price": -148,
       "model_line": "HOU -2.6",
       "out_of_policy": false,
-      "pick": "CIN",
-      "pick_prob": 0.502,
-      "pred_away_score": 22.5,
-      "pred_home_score": 25.1,
+      "pick": "HOU",
+      "pick_prob": 0.515,
+      "pred_away_score": 21.7,
+      "pred_home_score": 24.3,
       "pred_margin": 2.6,
-      "pred_total": 47.5,
+      "pred_total": 46.0,
       "revisions": [
         {
           "logged_at": "2026-09-13T17:07:06.208837+00:00",
@@ -2010,6 +2063,15 @@
           "post_kickoff": false,
           "pred_margin": 2.6,
           "spread_line": 3.0
+        },
+        {
+          "logged_at": "2026-09-15T10:03:16.416771+00:00",
+          "ml_price": -148,
+          "pick": "HOU",
+          "pick_prob": 0.515,
+          "post_kickoff": false,
+          "pred_margin": 2.6,
+          "spread_line": 3.0
         }
       ],
       "tier": "Toss-up"
@@ -2020,21 +2082,21 @@
       "datetime_utc": "2026-09-20T17:00:00+00:00",
       "game_id": "2026_02_CLE_TB",
       "home": "TB",
-      "home_win_prob": 0.736,
-      "horizon_days": 6.29,
+      "home_win_prob": 0.725,
+      "horizon_days": 5.29,
       "in_window": true,
-      "logged_at": "2026-09-14T10:03:18.432557+00:00",
+      "logged_at": "2026-09-15T10:03:16.416771+00:00",
       "market_line": "TB -8.5",
       "market_total": 40.5,
-      "ml_price": -380,
+      "ml_price": -360,
       "model_line": "TB -8.2",
       "out_of_policy": false,
       "pick": "TB",
-      "pick_prob": 0.736,
+      "pick_prob": 0.725,
       "pred_away_score": 16.3,
-      "pred_home_score": 24.5,
+      "pred_home_score": 24.6,
       "pred_margin": 8.2,
-      "pred_total": 40.7,
+      "pred_total": 40.9,
       "revisions": [
         {
           "logged_at": "2026-09-13T17:07:06.208837+00:00",
@@ -2053,6 +2115,15 @@
           "post_kickoff": false,
           "pred_margin": 8.2,
           "spread_line": 8.5
+        },
+        {
+          "logged_at": "2026-09-15T10:03:16.416771+00:00",
+          "ml_price": -360,
+          "pick": "TB",
+          "pick_prob": 0.725,
+          "post_kickoff": false,
+          "pred_margin": 8.2,
+          "spread_line": 8.5
         }
       ],
       "tier": "Strong"
@@ -2063,21 +2134,21 @@
       "datetime_utc": "2026-09-20T17:00:00+00:00",
       "game_id": "2026_02_GB_NYJ",
       "home": "NYJ",
-      "home_win_prob": 0.323,
-      "horizon_days": 6.29,
+      "home_win_prob": 0.333,
+      "horizon_days": 5.29,
       "in_window": true,
-      "logged_at": "2026-09-14T10:03:18.432557+00:00",
+      "logged_at": "2026-09-15T10:03:16.416771+00:00",
       "market_line": "GB -4.5",
       "market_total": 44.5,
-      "ml_price": -218,
+      "ml_price": -205,
       "model_line": "GB -4.6",
       "out_of_policy": false,
       "pick": "GB",
-      "pick_prob": 0.677,
+      "pick_prob": 0.667,
       "pred_away_score": 23.8,
-      "pred_home_score": 19.2,
+      "pred_home_score": 19.3,
       "pred_margin": -4.6,
-      "pred_total": 43.0,
+      "pred_total": 43.1,
       "revisions": [
         {
           "logged_at": "2026-09-13T17:07:06.208837+00:00",
@@ -2096,6 +2167,15 @@
           "post_kickoff": false,
           "pred_margin": -4.6,
           "spread_line": -4.5
+        },
+        {
+          "logged_at": "2026-09-15T10:03:16.416771+00:00",
+          "ml_price": -205,
+          "pick": "GB",
+          "pick_prob": 0.667,
+          "post_kickoff": false,
+          "pred_margin": -4.6,
+          "spread_line": -4.5
         }
       ],
       "tier": "Lean"
@@ -2106,21 +2186,21 @@
       "datetime_utc": "2026-09-21T00:20:00+00:00",
       "game_id": "2026_02_IND_KC",
       "home": "KC",
-      "home_win_prob": 0.671,
-      "horizon_days": 6.59,
+      "home_win_prob": 0.674,
+      "horizon_days": 5.59,
       "in_window": true,
-      "logged_at": "2026-09-14T10:03:18.432557+00:00",
+      "logged_at": "2026-09-15T10:03:16.416771+00:00",
       "market_line": "KC -6.5",
-      "market_total": 48.5,
-      "ml_price": -285,
-      "model_line": "KC -6.2",
+      "market_total": 47.5,
+      "ml_price": -310,
+      "model_line": "KC -6.8",
       "out_of_policy": false,
       "pick": "KC",
-      "pick_prob": 0.671,
-      "pred_away_score": 21.3,
-      "pred_home_score": 27.5,
-      "pred_margin": 6.2,
-      "pred_total": 48.9,
+      "pick_prob": 0.674,
+      "pred_away_score": 20.6,
+      "pred_home_score": 27.3,
+      "pred_margin": 6.8,
+      "pred_total": 47.9,
       "revisions": [
         {
           "logged_at": "2026-09-14T01:07:07.332551+00:00",
@@ -2139,6 +2219,15 @@
           "post_kickoff": false,
           "pred_margin": 6.2,
           "spread_line": 6.5
+        },
+        {
+          "logged_at": "2026-09-15T10:03:16.416771+00:00",
+          "ml_price": -310,
+          "pick": "KC",
+          "pick_prob": 0.674,
+          "post_kickoff": false,
+          "pred_margin": 6.8,
+          "spread_line": 6.5
         }
       ],
       "tier": "Lean"
@@ -2149,21 +2238,21 @@
       "datetime_utc": "2026-09-20T20:05:00+00:00",
       "game_id": "2026_02_JAX_DEN",
       "home": "DEN",
-      "home_win_prob": 0.553,
-      "horizon_days": 6.42,
+      "home_win_prob": 0.556,
+      "horizon_days": 5.42,
       "in_window": true,
-      "logged_at": "2026-09-14T10:03:18.432557+00:00",
+      "logged_at": "2026-09-15T10:03:16.416771+00:00",
       "market_line": "DEN -2.5",
-      "market_total": 43.5,
-      "ml_price": -142,
-      "model_line": "DEN -2.1",
+      "market_total": 44.5,
+      "ml_price": -135,
+      "model_line": "DEN -2.9",
       "out_of_policy": false,
       "pick": "DEN",
-      "pick_prob": 0.553,
-      "pred_away_score": 20.4,
-      "pred_home_score": 22.5,
-      "pred_margin": 2.1,
-      "pred_total": 42.9,
+      "pick_prob": 0.556,
+      "pred_away_score": 20.6,
+      "pred_home_score": 23.5,
+      "pred_margin": 2.9,
+      "pred_total": 44.1,
       "revisions": [
         {
           "logged_at": "2026-09-13T20:07:06.731504+00:00",
@@ -2182,6 +2271,15 @@
           "post_kickoff": false,
           "pred_margin": 2.1,
           "spread_line": 2.5
+        },
+        {
+          "logged_at": "2026-09-15T10:03:16.416771+00:00",
+          "ml_price": -135,
+          "pick": "DEN",
+          "pick_prob": 0.556,
+          "post_kickoff": false,
+          "pred_margin": 2.9,
+          "spread_line": 2.5
         }
       ],
       "tier": "Toss-up"
@@ -2192,21 +2290,21 @@
       "datetime_utc": "2026-09-20T20:05:00+00:00",
       "game_id": "2026_02_LV_LAC",
       "home": "LAC",
-      "home_win_prob": 0.725,
-      "horizon_days": 6.42,
+      "home_win_prob": 0.736,
+      "horizon_days": 5.42,
       "in_window": true,
-      "logged_at": "2026-09-14T10:03:18.432557+00:00",
+      "logged_at": "2026-09-15T10:03:16.416771+00:00",
       "market_line": "LAC -7.0",
-      "market_total": 44.5,
-      "ml_price": -290,
+      "market_total": 43.5,
+      "ml_price": -305,
       "model_line": "LAC -7.4",
       "out_of_policy": false,
       "pick": "LAC",
-      "pick_prob": 0.725,
-      "pred_away_score": 19.4,
-      "pred_home_score": 26.8,
+      "pick_prob": 0.736,
+      "pred_away_score": 18.9,
+      "pred_home_score": 26.3,
       "pred_margin": 7.4,
-      "pred_total": 46.3,
+      "pred_total": 45.2,
       "revisions": [
         {
           "logged_at": "2026-09-13T20:07:06.731504+00:00",
@@ -2225,6 +2323,15 @@
           "post_kickoff": false,
           "pred_margin": 7.4,
           "spread_line": 7.0
+        },
+        {
+          "logged_at": "2026-09-15T10:03:16.416771+00:00",
+          "ml_price": -305,
+          "pick": "LAC",
+          "pick_prob": 0.736,
+          "post_kickoff": false,
+          "pred_margin": 7.4,
+          "spread_line": 7.0
         }
       ],
       "tier": "Strong"
@@ -2235,21 +2342,21 @@
       "datetime_utc": "2026-09-20T20:25:00+00:00",
       "game_id": "2026_02_MIA_SF",
       "home": "SF",
-      "home_win_prob": 0.842,
-      "horizon_days": 6.43,
+      "home_win_prob": 0.848,
+      "horizon_days": 5.43,
       "in_window": true,
-      "logged_at": "2026-09-14T10:03:18.432557+00:00",
-      "market_line": "SF -12.5",
-      "market_total": 46.5,
-      "ml_price": -900,
-      "model_line": "SF -12.5",
+      "logged_at": "2026-09-15T10:03:16.416771+00:00",
+      "market_line": "SF -13.5",
+      "market_total": 45.5,
+      "ml_price": -950,
+      "model_line": "SF -13.5",
       "out_of_policy": false,
       "pick": "SF",
-      "pick_prob": 0.842,
-      "pred_away_score": 17.4,
+      "pick_prob": 0.848,
+      "pred_away_score": 16.4,
       "pred_home_score": 29.9,
-      "pred_margin": 12.5,
-      "pred_total": 47.4,
+      "pred_margin": 13.5,
+      "pred_total": 46.3,
       "revisions": [
         {
           "logged_at": "2026-09-13T21:07:14.107107+00:00",
@@ -2268,6 +2375,15 @@
           "post_kickoff": false,
           "pred_margin": 12.5,
           "spread_line": 12.5
+        },
+        {
+          "logged_at": "2026-09-15T10:03:16.416771+00:00",
+          "ml_price": -950,
+          "pick": "SF",
+          "pick_prob": 0.848,
+          "post_kickoff": false,
+          "pred_margin": 13.5,
+          "spread_line": 13.5
         }
       ],
       "tier": "Strong"
@@ -2278,21 +2394,21 @@
       "datetime_utc": "2026-09-20T17:00:00+00:00",
       "game_id": "2026_02_MIN_CHI",
       "home": "CHI",
-      "home_win_prob": 0.695,
-      "horizon_days": 6.29,
+      "home_win_prob": 0.673,
+      "horizon_days": 5.29,
       "in_window": true,
-      "logged_at": "2026-09-14T10:03:18.432557+00:00",
+      "logged_at": "2026-09-15T10:03:16.416771+00:00",
       "market_line": "CHI -5.5",
-      "market_total": 48.5,
-      "ml_price": -265,
-      "model_line": "CHI -6.7",
+      "market_total": 49.5,
+      "ml_price": -238,
+      "model_line": "CHI -6.8",
       "out_of_policy": false,
       "pick": "CHI",
-      "pick_prob": 0.695,
-      "pred_away_score": 20.6,
-      "pred_home_score": 27.3,
-      "pred_margin": 6.7,
-      "pred_total": 48.0,
+      "pick_prob": 0.673,
+      "pred_away_score": 21.0,
+      "pred_home_score": 27.8,
+      "pred_margin": 6.8,
+      "pred_total": 48.8,
       "revisions": [
         {
           "logged_at": "2026-09-13T17:07:06.208837+00:00",
@@ -2311,6 +2427,15 @@
           "post_kickoff": false,
           "pred_margin": 6.7,
           "spread_line": 5.5
+        },
+        {
+          "logged_at": "2026-09-15T10:03:16.416771+00:00",
+          "ml_price": -238,
+          "pick": "CHI",
+          "pick_prob": 0.673,
+          "post_kickoff": false,
+          "pred_margin": 6.8,
+          "spread_line": 5.5
         }
       ],
       "tier": "Lean"
@@ -2321,21 +2446,21 @@
       "datetime_utc": "2026-09-20T17:00:00+00:00",
       "game_id": "2026_02_NO_BAL",
       "home": "BAL",
-      "home_win_prob": 0.766,
-      "horizon_days": 6.29,
+      "home_win_prob": 0.765,
+      "horizon_days": 5.29,
       "in_window": true,
-      "logged_at": "2026-09-14T10:03:18.432557+00:00",
+      "logged_at": "2026-09-15T10:03:16.416771+00:00",
       "market_line": "BAL -8.5",
-      "market_total": 48.5,
-      "ml_price": -380,
-      "model_line": "BAL -9.1",
+      "market_total": 46.5,
+      "ml_price": -360,
+      "model_line": "BAL -9.2",
       "out_of_policy": false,
       "pick": "BAL",
-      "pick_prob": 0.766,
-      "pred_away_score": 19.8,
-      "pred_home_score": 28.9,
-      "pred_margin": 9.1,
-      "pred_total": 48.7,
+      "pick_prob": 0.765,
+      "pred_away_score": 18.7,
+      "pred_home_score": 27.9,
+      "pred_margin": 9.2,
+      "pred_total": 46.6,
       "revisions": [
         {
           "logged_at": "2026-09-13T17:07:06.208837+00:00",
@@ -2354,6 +2479,15 @@
           "post_kickoff": false,
           "pred_margin": 9.1,
           "spread_line": 8.5
+        },
+        {
+          "logged_at": "2026-09-15T10:03:16.416771+00:00",
+          "ml_price": -360,
+          "pick": "BAL",
+          "pick_prob": 0.765,
+          "post_kickoff": false,
+          "pred_margin": 9.2,
+          "spread_line": 8.5
         }
       ],
       "tier": "Strong"
@@ -2364,21 +2498,21 @@
       "datetime_utc": "2026-09-20T17:00:00+00:00",
       "game_id": "2026_02_PHI_TEN",
       "home": "TEN",
-      "home_win_prob": 0.293,
-      "horizon_days": 6.29,
+      "home_win_prob": 0.286,
+      "horizon_days": 5.29,
       "in_window": true,
-      "logged_at": "2026-09-14T10:03:18.432557+00:00",
+      "logged_at": "2026-09-15T10:03:16.416771+00:00",
       "market_line": "PHI -7.0",
-      "market_total": 40.5,
+      "market_total": 39.5,
       "ml_price": -305,
       "model_line": "PHI -7.2",
       "out_of_policy": false,
       "pick": "PHI",
-      "pick_prob": 0.707,
-      "pred_away_score": 23.2,
-      "pred_home_score": 16.0,
+      "pick_prob": 0.714,
+      "pred_away_score": 22.8,
+      "pred_home_score": 15.6,
       "pred_margin": -7.2,
-      "pred_total": 39.3,
+      "pred_total": 38.4,
       "revisions": [
         {
           "logged_at": "2026-09-13T17:07:06.208837+00:00",
@@ -2397,6 +2531,15 @@
           "post_kickoff": false,
           "pred_margin": -7.2,
           "spread_line": -7.0
+        },
+        {
+          "logged_at": "2026-09-15T10:03:16.416771+00:00",
+          "ml_price": -305,
+          "pick": "PHI",
+          "pick_prob": 0.714,
+          "post_kickoff": false,
+          "pred_margin": -7.2,
+          "spread_line": -7.0
         }
       ],
       "tier": "Strong"
@@ -2407,21 +2550,21 @@
       "datetime_utc": "2026-09-20T17:00:00+00:00",
       "game_id": "2026_02_PIT_NE",
       "home": "NE",
-      "home_win_prob": 0.678,
-      "horizon_days": 6.29,
+      "home_win_prob": 0.667,
+      "horizon_days": 5.29,
       "in_window": true,
-      "logged_at": "2026-09-14T10:03:18.432557+00:00",
+      "logged_at": "2026-09-15T10:03:16.416771+00:00",
       "market_line": "NE -5.5",
       "market_total": 42.5,
-      "ml_price": -245,
+      "ml_price": -230,
       "model_line": "NE -6.0",
       "out_of_policy": false,
       "pick": "NE",
-      "pick_prob": 0.678,
-      "pred_away_score": 18.4,
+      "pick_prob": 0.667,
+      "pred_away_score": 18.3,
       "pred_home_score": 24.3,
       "pred_margin": 6.0,
-      "pred_total": 42.7,
+      "pred_total": 42.5,
       "revisions": [
         {
           "logged_at": "2026-09-13T17:07:06.208837+00:00",
@@ -2440,6 +2583,15 @@
           "post_kickoff": false,
           "pred_margin": 6.0,
           "spread_line": 5.5
+        },
+        {
+          "logged_at": "2026-09-15T10:03:16.416771+00:00",
+          "ml_price": -230,
+          "pick": "NE",
+          "pick_prob": 0.667,
+          "post_kickoff": false,
+          "pred_margin": 6.0,
+          "spread_line": 5.5
         }
       ],
       "tier": "Lean"
@@ -2450,21 +2602,21 @@
       "datetime_utc": "2026-09-20T20:25:00+00:00",
       "game_id": "2026_02_SEA_ARI",
       "home": "ARI",
-      "home_win_prob": 0.352,
-      "horizon_days": 6.43,
+      "home_win_prob": 0.34,
+      "horizon_days": 5.43,
       "in_window": true,
-      "logged_at": "2026-09-14T10:03:18.432557+00:00",
+      "logged_at": "2026-09-15T10:03:16.416771+00:00",
       "market_line": "SEA -4.5",
       "market_total": 41.5,
       "ml_price": -225,
       "model_line": "SEA -4.7",
       "out_of_policy": false,
       "pick": "SEA",
-      "pick_prob": 0.648,
-      "pred_away_score": 22.7,
-      "pred_home_score": 18.0,
+      "pick_prob": 0.66,
+      "pred_away_score": 23.3,
+      "pred_home_score": 18.6,
       "pred_margin": -4.7,
-      "pred_total": 40.7,
+      "pred_total": 42.0,
       "revisions": [
         {
           "logged_at": "2026-09-13T21:07:14.107107+00:00",
@@ -2483,6 +2635,15 @@
           "post_kickoff": false,
           "pred_margin": -4.7,
           "spread_line": -4.5
+        },
+        {
+          "logged_at": "2026-09-15T10:03:16.416771+00:00",
+          "ml_price": -225,
+          "pick": "SEA",
+          "pick_prob": 0.66,
+          "post_kickoff": false,
+          "pred_margin": -4.7,
+          "spread_line": -4.5
         }
       ],
       "tier": "Lean"
@@ -2493,21 +2654,21 @@
       "datetime_utc": "2026-09-20T20:25:00+00:00",
       "game_id": "2026_02_WAS_DAL",
       "home": "DAL",
-      "home_win_prob": 0.622,
-      "horizon_days": 6.43,
+      "home_win_prob": 0.657,
+      "horizon_days": 5.43,
       "in_window": true,
-      "logged_at": "2026-09-14T10:03:18.432557+00:00",
-      "market_line": "DAL -4.5",
+      "logged_at": "2026-09-15T10:03:16.416771+00:00",
+      "market_line": "DAL -3.5",
       "market_total": 50.5,
-      "ml_price": -198,
-      "model_line": "DAL -4.6",
+      "ml_price": -225,
+      "model_line": "DAL -3.6",
       "out_of_policy": false,
       "pick": "DAL",
-      "pick_prob": 0.622,
-      "pred_away_score": 22.3,
-      "pred_home_score": 26.9,
-      "pred_margin": 4.6,
-      "pred_total": 49.1,
+      "pick_prob": 0.657,
+      "pred_away_score": 22.6,
+      "pred_home_score": 26.2,
+      "pred_margin": 3.6,
+      "pred_total": 48.8,
       "revisions": [
         {
           "logged_at": "2026-09-13T21:07:14.107107+00:00",
@@ -2526,6 +2687,58 @@
           "post_kickoff": false,
           "pred_margin": 4.6,
           "spread_line": 4.5
+        },
+        {
+          "logged_at": "2026-09-15T10:03:16.416771+00:00",
+          "ml_price": -225,
+          "pick": "DAL",
+          "pick_prob": 0.657,
+          "post_kickoff": false,
+          "pred_margin": 3.6,
+          "spread_line": 3.5
+        }
+      ],
+      "tier": "Lean"
+    },
+    {
+      "away": "NYG",
+      "date": "2026-09-21",
+      "datetime_utc": "2026-09-22T00:15:00+00:00",
+      "game_id": "2026_02_NYG_LA",
+      "home": "LA",
+      "home_win_prob": 0.688,
+      "horizon_days": 6.59,
+      "in_window": true,
+      "logged_at": "2026-09-15T10:03:16.416771+00:00",
+      "market_line": "LA -7.0",
+      "market_total": 48.5,
+      "ml_price": -355,
+      "model_line": "LA -6.9",
+      "out_of_policy": false,
+      "pick": "LA",
+      "pick_prob": 0.688,
+      "pred_away_score": 21.8,
+      "pred_home_score": 28.7,
+      "pred_margin": 6.9,
+      "pred_total": 50.5,
+      "revisions": [
+        {
+          "logged_at": "2026-09-15T01:07:20.829500+00:00",
+          "ml_price": -340,
+          "pick": "LA",
+          "pick_prob": 0.683,
+          "post_kickoff": false,
+          "pred_margin": 6.8,
+          "spread_line": 7.0
+        },
+        {
+          "logged_at": "2026-09-15T10:03:16.416771+00:00",
+          "ml_price": -355,
+          "pick": "LA",
+          "pick_prob": 0.688,
+          "post_kickoff": false,
+          "pred_margin": 6.9,
+          "spread_line": 7.0
         }
       ],
       "tier": "Lean"
